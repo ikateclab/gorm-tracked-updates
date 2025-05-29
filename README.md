@@ -229,6 +229,9 @@ Run comprehensive tests:
 # Run all tests
 go test ./...
 
+# For Go 1.24.0 compatibility (due to sonic dependency)
+go test -ldflags="-checklinkname=0" ./...
+
 # Run specific package tests
 go test ./pkg/diffgen -v
 go test ./pkg/clonegen -v
@@ -236,6 +239,8 @@ go test ./pkg/clonegen -v
 # Run performance benchmarks
 cd examples/performance && go test -bench=. -v
 ```
+
+**Note**: Go 1.24.0 requires the `-checklinkname=0` flag due to a compatibility issue with the `github.com/bytedance/sonic` dependency. This is automatically handled in CI/CD workflows.
 
 ## Examples
 

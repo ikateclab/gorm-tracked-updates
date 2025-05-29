@@ -92,6 +92,9 @@ go test ./pkg/clonegen -v
 
 # Run with coverage
 go test -cover ./...
+
+# For Go 1.24.0 compatibility (due to sonic dependency)
+go test -ldflags="-checklinkname=0" -cover ./...
 ```
 
 ### Integration Tests
@@ -196,6 +199,9 @@ pkg/
 ```bash
 # Full test suite
 go test ./...
+
+# For Go 1.24.0 compatibility
+go test -ldflags="-checklinkname=0" ./...
 
 # Integration tests
 cd examples/go-generate && make all
