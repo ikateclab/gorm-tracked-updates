@@ -90,12 +90,10 @@ func (a Person) Diff(b Person) map[string]interface{} {
 
 	// Compare Address
 
-	// Struct type comparison
-	if !reflect.DeepEqual(a.Address, b.Address) {
-		nestedDiff := a.Address.Diff(b.Address)
-		if len(nestedDiff) > 0 {
-			diff["Address"] = nestedDiff
-		}
+	// Struct type comparison - call Diff method directly
+	nestedDiff := a.Address.Diff(b.Address)
+	if len(nestedDiff) > 0 {
+		diff["Address"] = nestedDiff
 	}
 
 	// Compare Contacts
@@ -108,14 +106,14 @@ func (a Person) Diff(b Person) map[string]interface{} {
 	// Compare Manager
 
 	// Pointer to struct comparison
-	if !reflect.DeepEqual(a.Manager, b.Manager) {
-		if a.Manager == nil || b.Manager == nil {
+	if a.Manager == nil || b.Manager == nil {
+		if a.Manager != b.Manager {
 			diff["Manager"] = b.Manager
-		} else {
-			nestedDiff := (*a.Manager).Diff(*b.Manager)
-			if len(nestedDiff) > 0 {
-				diff["Manager"] = nestedDiff
-			}
+		}
+	} else {
+		nestedDiff := (*a.Manager).Diff(*b.Manager)
+		if len(nestedDiff) > 0 {
+			diff["Manager"] = nestedDiff
 		}
 	}
 
@@ -143,12 +141,10 @@ func (a Company) Diff(b Company) map[string]interface{} {
 
 	// Compare Address
 
-	// Struct type comparison
-	if !reflect.DeepEqual(a.Address, b.Address) {
-		nestedDiff := a.Address.Diff(b.Address)
-		if len(nestedDiff) > 0 {
-			diff["Address"] = nestedDiff
-		}
+	// Struct type comparison - call Diff method directly
+	nestedDiff := a.Address.Diff(b.Address)
+	if len(nestedDiff) > 0 {
+		diff["Address"] = nestedDiff
 	}
 
 	// Compare Employees
@@ -161,14 +157,14 @@ func (a Company) Diff(b Company) map[string]interface{} {
 	// Compare CEO
 
 	// Pointer to struct comparison
-	if !reflect.DeepEqual(a.CEO, b.CEO) {
-		if a.CEO == nil || b.CEO == nil {
+	if a.CEO == nil || b.CEO == nil {
+		if a.CEO != b.CEO {
 			diff["CEO"] = b.CEO
-		} else {
-			nestedDiff := (*a.CEO).Diff(*b.CEO)
-			if len(nestedDiff) > 0 {
-				diff["CEO"] = nestedDiff
-			}
+		}
+	} else {
+		nestedDiff := (*a.CEO).Diff(*b.CEO)
+		if len(nestedDiff) > 0 {
+			diff["CEO"] = nestedDiff
 		}
 	}
 
@@ -211,14 +207,14 @@ func (a Project) Diff(b Project) map[string]interface{} {
 	// Compare TeamLead
 
 	// Pointer to struct comparison
-	if !reflect.DeepEqual(a.TeamLead, b.TeamLead) {
-		if a.TeamLead == nil || b.TeamLead == nil {
+	if a.TeamLead == nil || b.TeamLead == nil {
+		if a.TeamLead != b.TeamLead {
 			diff["TeamLead"] = b.TeamLead
-		} else {
-			nestedDiff := (*a.TeamLead).Diff(*b.TeamLead)
-			if len(nestedDiff) > 0 {
-				diff["TeamLead"] = nestedDiff
-			}
+		}
+	} else {
+		nestedDiff := (*a.TeamLead).Diff(*b.TeamLead)
+		if len(nestedDiff) > 0 {
+			diff["TeamLead"] = nestedDiff
 		}
 	}
 
@@ -232,14 +228,14 @@ func (a Project) Diff(b Project) map[string]interface{} {
 	// Compare Company
 
 	// Pointer to struct comparison
-	if !reflect.DeepEqual(a.Company, b.Company) {
-		if a.Company == nil || b.Company == nil {
+	if a.Company == nil || b.Company == nil {
+		if a.Company != b.Company {
 			diff["Company"] = b.Company
-		} else {
-			nestedDiff := (*a.Company).Diff(*b.Company)
-			if len(nestedDiff) > 0 {
-				diff["Company"] = nestedDiff
-			}
+		}
+	} else {
+		nestedDiff := (*a.Company).Diff(*b.Company)
+		if len(nestedDiff) > 0 {
+			diff["Company"] = nestedDiff
 		}
 	}
 

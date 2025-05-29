@@ -5,7 +5,8 @@ import (
 	"fmt"
 	"time"
 
-	"gorm-tracked-updates/examples/go-generate/models"
+	"example-models/models"
+	"github.com/google/uuid"
 )
 
 func main() {
@@ -13,26 +14,25 @@ func main() {
 	fmt.Println("=" + fmt.Sprintf("%60s", ""))
 
 	// Create test data
-	original := createTestUser()
+	original := createTestService()
 
-	fmt.Println("\n📋 Step 1: Original User Data")
-	printUser("Original", original)
+	fmt.Println("\n📋 Step 1: Original Service Data")
+	printService("Original", original)
 
-	// Clone the user
-	fmt.Println("\n🔧 Step 2: Cloning User")
+	// Clone the service
+	fmt.Println("\n🔧 Step 2: Cloning Service")
 	cloned := original.Clone()
-	fmt.Println("✅ User cloned successfully")
+	fmt.Println("✅ Service cloned successfully")
 
 	// Verify independence
 	fmt.Println("\n🔍 Step 3: Verifying Independence")
-	cloned.Name = "Jane Smith"
-	cloned.Email = "jane.smith@example.com"
-	cloned.Age = 28
-	cloned.Profile.Bio = "Updated bio"
-	cloned.Addresses[0].City = "San Francisco"
+	cloned.Name = "Updated Service"
+	cloned.Data.SyncCount = 10
+	cloned.Data.Status.IsConnected = false
+	cloned.Settings.KeepOnline = false
 
 	fmt.Printf("Original name: %s, Cloned name: %s\n", original.Name, cloned.Name)
-	fmt.Printf("Original city: %s, Cloned city: %s\n", original.Addresses[0].City, cloned.Addresses[0].City)
+	fmt.Printf("Original SyncCount: %d, Cloned SyncCount: %d\n", original.Data.SyncCount, cloned.Data.SyncCount)
 	fmt.Println("✅ Clone is independent from original")
 
 	// Generate diff
@@ -46,72 +46,51 @@ func main() {
 	// Demonstrate GORM usage
 	fmt.Println("\n💾 Step 5: GORM Usage Example")
 	fmt.Println("// Typical GORM workflow:")
-	fmt.Println("backup := user.Clone()")
-	fmt.Println("// ... make changes to user ...")
-	fmt.Println("changes := backup.Diff(user)")
-	fmt.Println("result := db.Model(&user).Updates(changes)")
+	fmt.Println("backup := service.Clone()")
+	fmt.Println("// ... make changes to service ...")
+	fmt.Println("changes := backup.Diff(service)")
+	fmt.Println("result := db.Model(&service).Updates(changes)")
 	fmt.Printf("// Would update %d fields\n", len(changes))
 
 	fmt.Println("\n🎯 go:generate integration working perfectly!")
 }
 
-func createTestUser() models.User {
-	return models.User{
-		ID:    1,
-		Name:  "John Doe",
-		Email: "john.doe@example.com",
-		Age:   30,
-		Profile: models.Profile{
-			Bio:      "Software developer",
-			Avatar:   "avatar.jpg",
-			Verified: true,
-			Settings: map[string]interface{}{
-				"theme":         "dark",
-				"notifications": true,
-			},
-			Metadata: map[string]string{
-				"department": "Engineering",
-				"level":      "Senior",
+func createTestService() models.Service {
+	return models.Service{
+		Id:   uuid.New(),
+		Name: "Test Service",
+		Data: &models.ServiceData{
+			MyId:       "test123",
+			SyncCount:  5,
+			SyncFlowDone: true,
+			Status: models.ServiceDataStatus{
+				IsConnected: true,
+				IsStarted:   true,
+				State:       "active",
 			},
 		},
-		Addresses: []models.Address{
-			{
-				ID:      1,
-				UserID:  1,
-				Type:    "home",
-				Street:  "123 Main St",
-				City:    "New York",
-				State:   "NY",
-				ZipCode: "10001",
-				Country: "USA",
-				Primary: true,
-			},
-			{
-				ID:      2,
-				UserID:  1,
-				Type:    "work",
-				Street:  "456 Business Ave",
-				City:    "New York",
-				State:   "NY",
-				ZipCode: "10002",
-				Country: "USA",
-				Primary: false,
-			},
+		Settings: &models.ServiceSettings{
+			KeepOnline:        true,
+			WppConnectVersion: "1.0.0",
+			WaVersion:         "2.0.0",
 		},
 		CreatedAt: time.Now().Add(-24 * time.Hour),
 		UpdatedAt: time.Now(),
+		AccountId: uuid.New(),
 	}
 }
 
-func printUser(label string, user models.User) {
-	fmt.Printf("%s User:\n", label)
-	fmt.Printf("  ID: %d\n", user.ID)
-	fmt.Printf("  Name: %s\n", user.Name)
-	fmt.Printf("  Email: %s\n", user.Email)
-	fmt.Printf("  Age: %d\n", user.Age)
-	fmt.Printf("  Bio: %s\n", user.Profile.Bio)
-	fmt.Printf("  Addresses: %d\n", len(user.Addresses))
-	if len(user.Addresses) > 0 {
-		fmt.Printf("    Primary: %s, %s\n", user.Addresses[0].Street, user.Addresses[0].City)
+func printService(label string, service models.Service) {
+	fmt.Printf("%s Service:\n", label)
+	fmt.Printf("  ID: %s\n", service.Id)
+	fmt.Printf("  Name: %s\n", service.Name)
+	if service.Data != nil {
+		fmt.Printf("  Data.MyId: %s\n", service.Data.MyId)
+		fmt.Printf("  Data.SyncCount: %d\n", service.Data.SyncCount)
+		fmt.Printf("  Data.Status.IsConnected: %t\n", service.Data.Status.IsConnected)
+	}
+	if service.Settings != nil {
+		fmt.Printf("  Settings.KeepOnline: %t\n", service.Settings.KeepOnline)
+		fmt.Printf("  Settings.WppConnectVersion: %s\n", service.Settings.WppConnectVersion)
 	}
 }

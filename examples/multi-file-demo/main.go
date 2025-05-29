@@ -16,7 +16,7 @@ func main() {
 	fmt.Println("\n📝 Step 1: Generating diff methods from multiple files...")
 	diffGenerator := diffgen.New()
 
-	err := diffGenerator.ParseDirectory("examples/multi-file")
+	err := diffGenerator.ParseDirectory("../multi-file")
 	if err != nil {
 		log.Fatalf("❌ Error parsing multi-file directory: %v", err)
 	}
@@ -29,7 +29,7 @@ func main() {
 	}
 
 	// Generate and write diff methods
-	err = diffGenerator.WriteToPackageDir("examples/multi-file")
+	err = diffGenerator.WriteToPackageDir("../multi-file")
 	if err != nil {
 		log.Fatalf("❌ Error writing diff methods: %v", err)
 	}
@@ -40,7 +40,7 @@ func main() {
 	fmt.Println("\n🔧 Step 2: Generating clone methods from multiple files...")
 	cloneGenerator := clonegen.New()
 
-	err = cloneGenerator.ParseDirectory("examples/multi-file")
+	err = cloneGenerator.ParseDirectory("../multi-file")
 	if err != nil {
 		log.Fatalf("❌ Error parsing multi-file directory: %v", err)
 	}
@@ -48,7 +48,7 @@ func main() {
 	fmt.Printf("✅ Successfully parsed %d structs from multiple files\n", len(cloneGenerator.Structs))
 
 	// Generate and write clone methods
-	err = cloneGenerator.WriteToPackageDir("examples/multi-file")
+	err = cloneGenerator.WriteToPackageDir("../multi-file")
 	if err != nil {
 		log.Fatalf("❌ Error writing clone methods: %v", err)
 	}

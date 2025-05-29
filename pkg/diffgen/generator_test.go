@@ -386,6 +386,21 @@ func TestJSONFieldDetection(t *testing.T) {
 			expected: true,
 		},
 		{
+			name:     "Valid JSONB tag",
+			tag:      `gorm:"type:jsonb"`,
+			expected: true,
+		},
+		{
+			name:     "JSONB tag with other options",
+			tag:      `gorm:"type:jsonb;not null;default:'{}'"`,
+			expected: true,
+		},
+		{
+			name:     "JSONB tag with serializer",
+			tag:      `gorm:"type:jsonb;not null;default:'{}';serializer:json"`,
+			expected: true,
+		},
+		{
 			name:     "No JSON tag",
 			tag:      `gorm:"column:name"`,
 			expected: false,
