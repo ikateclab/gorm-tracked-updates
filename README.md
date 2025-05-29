@@ -48,37 +48,62 @@ gorm-tracked-updates/
     └── CLONEGEN.md              # Clone generator documentation
 ```
 
+## Installation
+
+```bash
+# Install the gorm-gen tool
+go install github.com/ikateclab/gorm-tracked-updates/cmd/gorm-gen@latest
+
+# Or install both tools
+go install github.com/ikateclab/gorm-tracked-updates/cmd/gorm-gen@latest
+go install github.com/ikateclab/gorm-tracked-updates/cmd/main@latest
+```
+
 ## Quick Start
 
 ### Option 1: go:generate Integration (Recommended)
 
 ```bash
 # 1. Install the generator tool
-cd examples/go-generate
-make install
+go install github.com/ikateclab/gorm-tracked-updates/cmd/gorm-gen@latest
 
-# 2. Generate clone and diff methods
-make generate
-
-# 3. Run the demo
-make demo
-```
-
-Or manually:
-```bash
-# Install the tool
-go install ./cmd/gorm-gen
-
-# Add to your Go files:
+# 2. Add to your Go files:
 //go:generate gorm-gen
 
-# Generate code
+# 3. Generate code
 go generate ./...
 ```
 
-### Option 2: Direct CLI Usage
+### Option 2: Use as Library
+
+```go
+package main
+
+import (
+    "github.com/ikateclab/gorm-tracked-updates/pkg/diffgen"
+    "github.com/ikateclab/gorm-tracked-updates/pkg/clonegen"
+)
+
+func main() {
+    // Generate diff methods
+    diffGen := diffgen.New()
+    diffGen.ParseDirectory("./models")
+    diffGen.WriteToPackageDir("./models")
+
+    // Generate clone methods
+    cloneGen := clonegen.New()
+    cloneGen.ParseDirectory("./models")
+    cloneGen.WriteToPackageDir("./models")
+}
+```
+
+### Option 3: Direct CLI Usage
 
 ```bash
+# Clone the repository for examples
+git clone https://github.com/ikateclab/gorm-tracked-updates.git
+cd gorm-tracked-updates
+
 # Generate both diff functions and clone methods from a directory
 go run cmd/main.go
 
@@ -263,7 +288,7 @@ Detailed documentation available:
 
 ## License
 
-[Add your license here]
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
 ## Use Cases
 

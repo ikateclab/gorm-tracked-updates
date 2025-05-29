@@ -6,8 +6,8 @@ import (
 	"log"
 	"reflect"
 
-	"gorm-tracked-updates/examples/structs"
-	"gorm-tracked-updates/pkg/clonegen"
+	"github.com/ikateclab/gorm-tracked-updates/examples/structs"
+	"github.com/ikateclab/gorm-tracked-updates/pkg/clonegen"
 )
 
 func main() {

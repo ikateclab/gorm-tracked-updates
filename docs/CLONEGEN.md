@@ -21,24 +21,24 @@ CloneGen creates methods that perform deep copying of struct instances, handling
 ```go
 package main
 
-import "gorm-tracked-updates/pkg/clonegen"
+import "github.com/ikateclab/gorm-tracked-updates/pkg/clonegen"
 
 func main() {
     // Create generator
     generator := clonegen.New()
-    
+
     // Parse struct definitions
     err := generator.ParseFile("structs.go")
     if err != nil {
         panic(err)
     }
-    
+
     // Generate clone methods
     code, err := generator.GenerateCode()
     if err != nil {
         panic(err)
     }
-    
+
     // Write to file
     err = generator.WriteToFile("generated_clone.go")
     if err != nil {
@@ -67,14 +67,14 @@ CloneGen generates:
 ```go
 func (original Person) ClonePerson() Person {
     clone := Person{}
-    
+
     // Simple type - direct assignment
     clone.Name = original.Name
     clone.Age = original.Age
-    
+
     // Struct type - recursive clone
     clone.Address = original.Address.CloneAddress()
-    
+
     // Slice - create new slice and clone elements
     if original.Contacts != nil {
         clone.Contacts = make([]Contact, len(original.Contacts))
@@ -82,13 +82,13 @@ func (original Person) ClonePerson() Person {
             clone.Contacts[i] = item.CloneContact()
         }
     }
-    
+
     // Pointer to struct - create new instance and clone
     if original.Manager != nil {
         clonedManager := original.Manager.ClonePerson()
         clone.Manager = &clonedManager
     }
-    
+
     // Map - create new map and copy key-value pairs
     if original.Metadata != nil {
         clone.Metadata = make(map[string]interface{})
@@ -96,7 +96,7 @@ func (original Person) ClonePerson() Person {
             clone.Metadata[k] = v
         }
     }
-    
+
     return clone
 }
 ```
@@ -263,20 +263,20 @@ func TestClonePerson(t *testing.T) {
         Age:  30,
         Manager: &Person{Name: "Jane", Age: 45},
     }
-    
+
     cloned := original.ClonePerson()
-    
+
     // Test equality
     if !reflect.DeepEqual(original, cloned) {
         t.Error("Clone should be equal to original")
     }
-    
+
     // Test independence
     cloned.Manager.Age = 46
     if original.Manager.Age == cloned.Manager.Age {
         t.Error("Clone should be independent of original")
     }
-    
+
     // Test different references
     if original.Manager == cloned.Manager {
         t.Error("Pointers should be different")
@@ -323,10 +323,10 @@ func TestUserUpdate(t *testing.T) {
     // Create test data
     user := createTestUser()
     original := user.CloneUser()
-    
+
     // Perform operation
     updateUser(&user, request)
-    
+
     // Verify changes
     diff := DiffUser(original, user)
     assert.Contains(t, diff, "Name")

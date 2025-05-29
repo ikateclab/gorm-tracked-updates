@@ -21,24 +21,24 @@ DiffGen creates functions that compare two struct instances and return a map con
 ```go
 package main
 
-import "gorm-tracked-updates/pkg/diffgen"
+import "github.com/ikateclab/gorm-tracked-updates/pkg/diffgen"
 
 func main() {
     // Create generator
     generator := diffgen.New()
-    
+
     // Parse struct definitions
     err := generator.ParseFile("structs.go")
     if err != nil {
         panic(err)
     }
-    
+
     // Generate diff functions
     code, err := generator.GenerateCode()
     if err != nil {
         panic(err)
     }
-    
+
     // Write to file
     err = generator.WriteToFile("generated_diff.go")
     if err != nil {
@@ -67,7 +67,7 @@ DiffGen generates:
 ```go
 func DiffPerson(a, b Person) map[string]interface{} {
     diff := make(map[string]interface{})
-    
+
     // Simple type comparison
     if a.Name != b.Name {
         diff["Name"] = b.Name
@@ -75,7 +75,7 @@ func DiffPerson(a, b Person) map[string]interface{} {
     if a.Age != b.Age {
         diff["Age"] = b.Age
     }
-    
+
     // Struct type comparison
     if !reflect.DeepEqual(a.Address, b.Address) {
         nestedDiff := DiffAddress(a.Address, b.Address)
@@ -83,12 +83,12 @@ func DiffPerson(a, b Person) map[string]interface{} {
             diff["Address"] = nestedDiff
         }
     }
-    
+
     // Slice comparison
     if !reflect.DeepEqual(a.Contacts, b.Contacts) {
         diff["Contacts"] = b.Contacts
     }
-    
+
     // Pointer comparison
     if !reflect.DeepEqual(a.Manager, b.Manager) {
         if a.Manager == nil || b.Manager == nil {
@@ -100,12 +100,12 @@ func DiffPerson(a, b Person) map[string]interface{} {
             }
         }
     }
-    
+
     // Map comparison
     if !reflect.DeepEqual(a.Metadata, b.Metadata) {
         diff["Metadata"] = b.Metadata
     }
-    
+
     return diff
 }
 ```
@@ -237,9 +237,9 @@ Generated functions can be tested like any Go code:
 func TestDiffPerson(t *testing.T) {
     person1 := Person{Name: "John", Age: 30}
     person2 := Person{Name: "John", Age: 31}
-    
+
     diff := DiffPerson(person1, person2)
-    
+
     if diff["Age"] != 31 {
         t.Errorf("Expected Age diff to be 31")
     }

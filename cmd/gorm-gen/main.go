@@ -7,8 +7,8 @@ import (
 	"path/filepath"
 	"strings"
 
-	"gorm-tracked-updates/pkg/clonegen"
-	"gorm-tracked-updates/pkg/diffgen"
+	"github.com/ikateclab/gorm-tracked-updates/pkg/clonegen"
+	"github.com/ikateclab/gorm-tracked-updates/pkg/diffgen"
 )
 
 func main() {

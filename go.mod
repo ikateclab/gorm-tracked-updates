@@ -1,4 +1,4 @@
-module gorm-tracked-updates
+module github.com/ikateclab/gorm-tracked-updates
 
 go 1.24.0
 
