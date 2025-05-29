@@ -45,13 +45,13 @@ jobs:
       run: go test -ldflags="-checklinkname=0" -bench=. -benchmem ./...
 
     - name: Install gorm-gen tool
-      run: go install ./cmd/gorm-gen
+      run: go install -ldflags="-checklinkname=0" ./cmd/gorm-gen
 
     - name: Test code generation
       run: |
         cd examples/go-generate
         go generate ./...
-        go build ./...
+        go build -ldflags="-checklinkname=0" ./...
 
     - name: Verify generated code is up to date
       run: |

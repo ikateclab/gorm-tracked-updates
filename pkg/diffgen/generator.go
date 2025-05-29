@@ -137,7 +137,10 @@ func (g *DiffGenerator) extractFields(structType *ast.StructType) []StructField 
 
 		// Get field type as string
 		var buf bytes.Buffer
-		format.Node(&buf, token.NewFileSet(), field.Type)
+		if err := format.Node(&buf, token.NewFileSet(), field.Type); err != nil {
+			// Skip this field if we can't format its type
+			continue
+		}
 		typeStr := buf.String()
 
 		// Get struct tag if present
