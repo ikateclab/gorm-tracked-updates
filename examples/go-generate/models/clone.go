@@ -1,507 +1,192 @@
 package models
 
 // Clone creates a deep copy of the AccountSettings struct
-func (original AccountSettings) Clone() AccountSettings {
-	clone := AccountSettings{}
-
-	return clone
+func (original *AccountSettings) Clone() *AccountSettings {
+	if original == nil {
+		return nil
+	}
+	// Create new instance - all fields are simple types
+	clone := *original
+	return &clone
 }
 
 // Clone creates a deep copy of the AccountData struct
-func (original AccountData) Clone() AccountData {
-	clone := AccountData{}
-
-	return clone
+func (original *AccountData) Clone() *AccountData {
+	if original == nil {
+		return nil
+	}
+	// Create new instance - all fields are simple types
+	clone := *original
+	return &clone
 }
 
 // Clone creates a deep copy of the Account struct
-func (original Account) Clone() Account {
-	clone := Account{}
+func (original *Account) Clone() *Account {
+	if original == nil {
+		return nil
+	}
+	// Create new instance and copy all simple fields
+	clone := *original
 
-	// Clone Id
+	// Only handle the fields that need deep cloning
 
-	// Complex type - direct assignment (may need manual handling for deep copy)
-	clone.Id = original.Id
+	// TODO: Id (uuid.UUID) may need manual deep copy handling
 
-	// Clone Name
-
-	// Simple type - direct assignment
-	clone.Name = original.Name
-
-	// Clone Settings
-
-	// Pointer to struct - create new instance and clone
 	if original.Settings != nil {
-		clonedSettings := original.Settings.Clone()
-		clone.Settings = &clonedSettings
+		clone.Settings = original.Settings.Clone()
 	}
 
-	// Clone Data
-
-	// Pointer to struct - create new instance and clone
 	if original.Data != nil {
-		clonedData := original.Data.Clone()
-		clone.Data = &clonedData
+		clone.Data = original.Data.Clone()
 	}
 
-	// Clone IsActive
+	// TODO: DeletedAt (gorm.DeletedAt) may need manual deep copy handling
 
-	// Simple type - direct assignment
-	clone.IsActive = original.IsActive
-
-	// Clone CorrelationId
-
-	// Simple type - direct assignment
-	clone.CorrelationId = original.CorrelationId
-
-	// Clone WebhookUrl
-
-	// Simple type - direct assignment
-	clone.WebhookUrl = original.WebhookUrl
-
-	// Clone CreatedAt
-
-	// Complex type - direct assignment (may need manual handling for deep copy)
-	clone.CreatedAt = original.CreatedAt
-
-	// Clone UpdatedAt
-
-	// Complex type - direct assignment (may need manual handling for deep copy)
-	clone.UpdatedAt = original.UpdatedAt
-
-	// Clone DeletedAt
-
-	// Complex type - direct assignment (may need manual handling for deep copy)
-	clone.DeletedAt = original.DeletedAt
-
-	// Clone Services
-
-	// Slice - create new slice and clone elements
 	if original.Services != nil {
 		clone.Services = make([]*Service, len(original.Services))
 
 		for i, item := range original.Services {
 			if item != nil {
-				clonedItem := item.Clone()
-				clone.Services[i] = &clonedItem
+				clone.Services[i] = item.Clone()
 			}
 		}
 
 	}
 
-	return clone
+	return &clone
 }
 
 // Clone creates a deep copy of the ServerPod struct
-func (original ServerPod) Clone() ServerPod {
-	clone := ServerPod{}
+func (original *ServerPod) Clone() *ServerPod {
+	if original == nil {
+		return nil
+	}
+	// Create new instance and copy all simple fields
+	clone := *original
 
-	// Clone Id
+	// Only handle the fields that need deep cloning
 
-	// Complex type - direct assignment (may need manual handling for deep copy)
-	clone.Id = original.Id
+	// TODO: Id (uuid.UUID) may need manual deep copy handling
 
-	// Clone Name
+	if original.Settings != nil {
+		clone.Settings = make(datatypes.JSON, len(original.Settings))
 
-	// Simple type - direct assignment
-	clone.Name = original.Name
+		copy(clone.Settings, original.Settings)
 
-	// Clone Address
+	}
 
-	// Simple type - direct assignment
-	clone.Address = original.Address
+	// TODO: DeletedAt (gorm.DeletedAt) may need manual deep copy handling
 
-	// Clone Version
+	// TODO: ServerPodTypeId (uuid.UUID) may need manual deep copy handling
 
-	// Simple type - direct assignment
-	clone.Version = original.Version
-
-	// Clone Settings
-
-	// Complex type - direct assignment (may need manual handling for deep copy)
-	clone.Settings = original.Settings
-
-	// Clone LastPingAt
-
-	// Complex type - direct assignment (may need manual handling for deep copy)
-	clone.LastPingAt = original.LastPingAt
-
-	// Clone CreatedAt
-
-	// Complex type - direct assignment (may need manual handling for deep copy)
-	clone.CreatedAt = original.CreatedAt
-
-	// Clone UpdatedAt
-
-	// Complex type - direct assignment (may need manual handling for deep copy)
-	clone.UpdatedAt = original.UpdatedAt
-
-	// Clone DeletedAt
-
-	// Complex type - direct assignment (may need manual handling for deep copy)
-	clone.DeletedAt = original.DeletedAt
-
-	// Clone ServerPodTypeId
-
-	// Complex type - direct assignment (may need manual handling for deep copy)
-	clone.ServerPodTypeId = original.ServerPodTypeId
-
-	// Clone ServerPodType
-
-	// Struct type - recursive clone
 	clone.ServerPodType = original.ServerPodType.Clone()
 
-	return clone
+	return &clone
 }
 
 // Clone creates a deep copy of the ServiceVersion struct
-func (original ServiceVersion) Clone() ServiceVersion {
-	clone := ServiceVersion{}
-
-	// Clone WppConnectVersion
-
-	// Simple type - direct assignment
-	clone.WppConnectVersion = original.WppConnectVersion
-
-	// Clone WaVersion
-
-	// Simple type - direct assignment
-	clone.WaVersion = original.WaVersion
-
-	return clone
+func (original *ServiceVersion) Clone() *ServiceVersion {
+	if original == nil {
+		return nil
+	}
+	// Create new instance - all fields are simple types
+	clone := *original
+	return &clone
 }
 
 // Clone creates a deep copy of the ServerPodType struct
-func (original ServerPodType) Clone() ServerPodType {
-	clone := ServerPodType{}
+func (original *ServerPodType) Clone() *ServerPodType {
+	if original == nil {
+		return nil
+	}
+	// Create new instance and copy all simple fields
+	clone := *original
 
-	// Clone Id
+	// Only handle the fields that need deep cloning
 
-	// Complex type - direct assignment (may need manual handling for deep copy)
-	clone.Id = original.Id
+	// TODO: Id (uuid.UUID) may need manual deep copy handling
 
-	// Clone Name
-
-	// Simple type - direct assignment
-	clone.Name = original.Name
-
-	// Clone Version
-
-	// Pointer to struct - create new instance and clone
 	if original.Version != nil {
-		clonedVersion := original.Version.Clone()
-		clone.Version = &clonedVersion
+		clone.Version = original.Version.Clone()
 	}
 
-	// Clone AutoScalable
+	// TODO: AccountIdWhitelist (JsonbStringSlice) may need manual deep copy handling
 
-	// Simple type - direct assignment
-	clone.AutoScalable = original.AutoScalable
+	// TODO: ServiceIdWhitelist (JsonbStringSlice) may need manual deep copy handling
 
-	// Clone Cloud
+	// TODO: DeletedAt (gorm.DeletedAt) may need manual deep copy handling
 
-	// Simple type - direct assignment
-	clone.Cloud = original.Cloud
-
-	// Clone ServerSize
-
-	// Simple type - direct assignment
-	clone.ServerSize = original.ServerSize
-
-	// Clone MaxPerPod
-
-	// Simple type - direct assignment
-	clone.MaxPerPod = original.MaxPerPod
-
-	// Clone Min
-
-	// Simple type - direct assignment
-	clone.Min = original.Min
-
-	// Clone DesiredAvailable
-
-	// Simple type - direct assignment
-	clone.DesiredAvailable = original.DesiredAvailable
-
-	// Clone StartPriority
-
-	// Simple type - direct assignment
-	clone.StartPriority = original.StartPriority
-
-	// Clone AccountIdWhitelist
-
-	// Complex type - direct assignment (may need manual handling for deep copy)
-	clone.AccountIdWhitelist = original.AccountIdWhitelist
-
-	// Clone ServiceIdWhitelist
-
-	// Complex type - direct assignment (may need manual handling for deep copy)
-	clone.ServiceIdWhitelist = original.ServiceIdWhitelist
-
-	// Clone CreatedAt
-
-	// Complex type - direct assignment (may need manual handling for deep copy)
-	clone.CreatedAt = original.CreatedAt
-
-	// Clone UpdatedAt
-
-	// Complex type - direct assignment (may need manual handling for deep copy)
-	clone.UpdatedAt = original.UpdatedAt
-
-	// Clone DeletedAt
-
-	// Complex type - direct assignment (may need manual handling for deep copy)
-	clone.DeletedAt = original.DeletedAt
-
-	return clone
+	return &clone
 }
 
 // Clone creates a deep copy of the ServiceDataStatus struct
-func (original ServiceDataStatus) Clone() ServiceDataStatus {
-	clone := ServiceDataStatus{}
-
-	// Clone IsSyncing
-
-	// Simple type - direct assignment
-	clone.IsSyncing = original.IsSyncing
-
-	// Clone IsConnected
-
-	// Simple type - direct assignment
-	clone.IsConnected = original.IsConnected
-
-	// Clone IsStarting
-
-	// Simple type - direct assignment
-	clone.IsStarting = original.IsStarting
-
-	// Clone IsStarted
-
-	// Simple type - direct assignment
-	clone.IsStarted = original.IsStarted
-
-	// Clone IsConflicted
-
-	// Simple type - direct assignment
-	clone.IsConflicted = original.IsConflicted
-
-	// Clone IsLoading
-
-	// Simple type - direct assignment
-	clone.IsLoading = original.IsLoading
-
-	// Clone IsOnChatPage
-
-	// Simple type - direct assignment
-	clone.IsOnChatPage = original.IsOnChatPage
-
-	// Clone EnteredQrCodePageAt
-
-	// Simple type - direct assignment
-	clone.EnteredQrCodePageAt = original.EnteredQrCodePageAt
-
-	// Clone DisconnectedAt
-
-	// Simple type - direct assignment
-	clone.DisconnectedAt = original.DisconnectedAt
-
-	// Clone IsOnQrPage
-
-	// Simple type - direct assignment
-	clone.IsOnQrPage = original.IsOnQrPage
-
-	// Clone IsQrCodeExpired
-
-	// Simple type - direct assignment
-	clone.IsQrCodeExpired = original.IsQrCodeExpired
-
-	// Clone IsWebConnected
-
-	// Simple type - direct assignment
-	clone.IsWebConnected = original.IsWebConnected
-
-	// Clone IsWebSyncing
-
-	// Simple type - direct assignment
-	clone.IsWebSyncing = original.IsWebSyncing
-
-	// Clone Mode
-
-	// Simple type - direct assignment
-	clone.Mode = original.Mode
-
-	// Clone MyId
-
-	// Simple type - direct assignment
-	clone.MyId = original.MyId
-
-	// Clone MyName
-
-	// Simple type - direct assignment
-	clone.MyName = original.MyName
-
-	// Clone MyNumber
-
-	// Simple type - direct assignment
-	clone.MyNumber = original.MyNumber
-
-	// Clone QrCodeExpiresAt
-
-	// Simple type - direct assignment
-	clone.QrCodeExpiresAt = original.QrCodeExpiresAt
-
-	// Clone QrCodeUrl
-
-	// Simple type - direct assignment
-	clone.QrCodeUrl = original.QrCodeUrl
-
-	// Clone State
-
-	// Simple type - direct assignment
-	clone.State = original.State
-
-	// Clone WaVersion
-
-	// Simple type - direct assignment
-	clone.WaVersion = original.WaVersion
-
-	return clone
+func (original *ServiceDataStatus) Clone() *ServiceDataStatus {
+	if original == nil {
+		return nil
+	}
+	// Create new instance - all fields are simple types
+	clone := *original
+	return &clone
 }
 
 // Clone creates a deep copy of the ServiceData struct
-func (original ServiceData) Clone() ServiceData {
-	clone := ServiceData{}
+func (original *ServiceData) Clone() *ServiceData {
+	if original == nil {
+		return nil
+	}
+	// Create new instance and copy all simple fields
+	clone := *original
 
-	// Clone MyId
+	// Only handle the fields that need deep cloning
 
-	// Simple type - direct assignment
-	clone.MyId = original.MyId
-
-	// Clone LastSyncAt
-
-	// Complex type - direct assignment (may need manual handling for deep copy)
-	clone.LastSyncAt = original.LastSyncAt
-
-	// Clone LastMessageTimestamp
-
-	// Complex type - direct assignment (may need manual handling for deep copy)
-	clone.LastMessageTimestamp = original.LastMessageTimestamp
-
-	// Clone SyncCount
-
-	// Simple type - direct assignment
-	clone.SyncCount = original.SyncCount
-
-	// Clone SyncFlowDone
-
-	// Simple type - direct assignment
-	clone.SyncFlowDone = original.SyncFlowDone
-
-	// Clone Status
-
-	// Struct type - recursive clone
 	clone.Status = original.Status.Clone()
 
-	// Clone StatusTimestamp
-
-	// Complex type - direct assignment (may need manual handling for deep copy)
-	clone.StatusTimestamp = original.StatusTimestamp
-
-	return clone
+	return &clone
 }
 
 // Clone creates a deep copy of the ServiceSettings struct
-func (original ServiceSettings) Clone() ServiceSettings {
-	clone := ServiceSettings{}
-
-	// Clone KeepOnline
-
-	// Simple type - direct assignment
-	clone.KeepOnline = original.KeepOnline
-
-	// Clone WppConnectVersion
-
-	// Simple type - direct assignment
-	clone.WppConnectVersion = original.WppConnectVersion
-
-	// Clone WaVersion
-
-	// Simple type - direct assignment
-	clone.WaVersion = original.WaVersion
-
-	return clone
+func (original *ServiceSettings) Clone() *ServiceSettings {
+	if original == nil {
+		return nil
+	}
+	// Create new instance - all fields are simple types
+	clone := *original
+	return &clone
 }
 
 // Clone creates a deep copy of the Service struct
-func (original Service) Clone() Service {
-	clone := Service{}
+func (original *Service) Clone() *Service {
+	if original == nil {
+		return nil
+	}
+	// Create new instance and copy all simple fields
+	clone := *original
 
-	// Clone Id
+	// Only handle the fields that need deep cloning
 
-	// Complex type - direct assignment (may need manual handling for deep copy)
-	clone.Id = original.Id
+	// TODO: Id (uuid.UUID) may need manual deep copy handling
 
-	// Clone Name
-
-	// Simple type - direct assignment
-	clone.Name = original.Name
-
-	// Clone Data
-
-	// Pointer to struct - create new instance and clone
 	if original.Data != nil {
-		clonedData := original.Data.Clone()
-		clone.Data = &clonedData
+		clone.Data = original.Data.Clone()
 	}
 
-	// Clone Settings
-
-	// Pointer to struct - create new instance and clone
 	if original.Settings != nil {
-		clonedSettings := original.Settings.Clone()
-		clone.Settings = &clonedSettings
+		clone.Settings = original.Settings.Clone()
 	}
 
-	// Clone CreatedAt
+	// TODO: DeletedAt (gorm.DeletedAt) may need manual deep copy handling
 
-	// Complex type - direct assignment (may need manual handling for deep copy)
-	clone.CreatedAt = original.CreatedAt
+	// TODO: AccountId (uuid.UUID) may need manual deep copy handling
 
-	// Clone UpdatedAt
+	// TODO: ServerPodId (*uuid.UUID) may need manual deep copy handling
 
-	// Complex type - direct assignment (may need manual handling for deep copy)
-	clone.UpdatedAt = original.UpdatedAt
-
-	// Clone DeletedAt
-
-	// Complex type - direct assignment (may need manual handling for deep copy)
-	clone.DeletedAt = original.DeletedAt
-
-	// Clone AccountId
-
-	// Complex type - direct assignment (may need manual handling for deep copy)
-	clone.AccountId = original.AccountId
-
-	// Clone ServerPodId
-
-	// Complex type - direct assignment (may need manual handling for deep copy)
-	clone.ServerPodId = original.ServerPodId
-
-	// Clone Account
-
-	// Pointer to struct - create new instance and clone
 	if original.Account != nil {
-		clonedAccount := original.Account.Clone()
-		clone.Account = &clonedAccount
+		clone.Account = original.Account.Clone()
 	}
 
-	// Clone ServerPod
-
-	// Pointer to struct - create new instance and clone
 	if original.ServerPod != nil {
-		clonedServerPod := original.ServerPod.Clone()
-		clone.ServerPod = &clonedServerPod
+		clone.ServerPod = original.ServerPod.Clone()
 	}
 
-	return clone
+	return &clone
 }

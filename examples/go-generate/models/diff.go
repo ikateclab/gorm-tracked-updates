@@ -9,24 +9,42 @@ import (
 )
 
 // Diff compares this AccountSettings instance with another and returns a map of differences
-// with only the new values for fields that have changed
-func (a AccountSettings) Diff(b AccountSettings) map[string]interface{} {
+// with only the new values for fields that have changed.
+// Returns nil if either pointer is nil.
+func (a *AccountSettings) Diff(b *AccountSettings) map[string]interface{} {
+	// Handle nil pointers
+	if a == nil || b == nil {
+		return nil
+	}
+
 	diff := make(map[string]interface{})
 
 	return diff
 }
 
 // Diff compares this AccountData instance with another and returns a map of differences
-// with only the new values for fields that have changed
-func (a AccountData) Diff(b AccountData) map[string]interface{} {
+// with only the new values for fields that have changed.
+// Returns nil if either pointer is nil.
+func (a *AccountData) Diff(b *AccountData) map[string]interface{} {
+	// Handle nil pointers
+	if a == nil || b == nil {
+		return nil
+	}
+
 	diff := make(map[string]interface{})
 
 	return diff
 }
 
 // Diff compares this Account instance with another and returns a map of differences
-// with only the new values for fields that have changed
-func (a Account) Diff(b Account) map[string]interface{} {
+// with only the new values for fields that have changed.
+// Returns nil if either pointer is nil.
+func (a *Account) Diff(b *Account) map[string]interface{} {
+	// Handle nil pointers
+	if a == nil || b == nil {
+		return nil
+	}
+
 	diff := make(map[string]interface{})
 
 	// Compare Id
@@ -132,8 +150,14 @@ func (a Account) Diff(b Account) map[string]interface{} {
 }
 
 // Diff compares this ServerPod instance with another and returns a map of differences
-// with only the new values for fields that have changed
-func (a ServerPod) Diff(b ServerPod) map[string]interface{} {
+// with only the new values for fields that have changed.
+// Returns nil if either pointer is nil.
+func (a *ServerPod) Diff(b *ServerPod) map[string]interface{} {
+	// Handle nil pointers
+	if a == nil || b == nil {
+		return nil
+	}
+
 	diff := make(map[string]interface{})
 
 	// Compare Id
@@ -227,7 +251,7 @@ func (a ServerPod) Diff(b ServerPod) map[string]interface{} {
 	// Compare ServerPodType
 
 	// Struct type comparison - call Diff method directly
-	nestedDiff := a.ServerPodType.Diff(b.ServerPodType)
+	nestedDiff := a.ServerPodType.Diff(&b.ServerPodType)
 	if len(nestedDiff) > 0 {
 		diff["ServerPodType"] = nestedDiff
 	}
@@ -236,8 +260,14 @@ func (a ServerPod) Diff(b ServerPod) map[string]interface{} {
 }
 
 // Diff compares this ServiceVersion instance with another and returns a map of differences
-// with only the new values for fields that have changed
-func (a ServiceVersion) Diff(b ServiceVersion) map[string]interface{} {
+// with only the new values for fields that have changed.
+// Returns nil if either pointer is nil.
+func (a *ServiceVersion) Diff(b *ServiceVersion) map[string]interface{} {
+	// Handle nil pointers
+	if a == nil || b == nil {
+		return nil
+	}
+
 	diff := make(map[string]interface{})
 
 	// Compare WppConnectVersion
@@ -258,8 +288,14 @@ func (a ServiceVersion) Diff(b ServiceVersion) map[string]interface{} {
 }
 
 // Diff compares this ServerPodType instance with another and returns a map of differences
-// with only the new values for fields that have changed
-func (a ServerPodType) Diff(b ServerPodType) map[string]interface{} {
+// with only the new values for fields that have changed.
+// Returns nil if either pointer is nil.
+func (a *ServerPodType) Diff(b *ServerPodType) map[string]interface{} {
+	// Handle nil pointers
+	if a == nil || b == nil {
+		return nil
+	}
+
 	diff := make(map[string]interface{})
 
 	// Compare Id
@@ -401,8 +437,14 @@ func (a ServerPodType) Diff(b ServerPodType) map[string]interface{} {
 }
 
 // Diff compares this ServiceDataStatus instance with another and returns a map of differences
-// with only the new values for fields that have changed
-func (a ServiceDataStatus) Diff(b ServiceDataStatus) map[string]interface{} {
+// with only the new values for fields that have changed.
+// Returns nil if either pointer is nil.
+func (a *ServiceDataStatus) Diff(b *ServiceDataStatus) map[string]interface{} {
+	// Handle nil pointers
+	if a == nil || b == nil {
+		return nil
+	}
+
 	diff := make(map[string]interface{})
 
 	// Compare IsSyncing
@@ -556,8 +598,14 @@ func (a ServiceDataStatus) Diff(b ServiceDataStatus) map[string]interface{} {
 }
 
 // Diff compares this ServiceData instance with another and returns a map of differences
-// with only the new values for fields that have changed
-func (a ServiceData) Diff(b ServiceData) map[string]interface{} {
+// with only the new values for fields that have changed.
+// Returns nil if either pointer is nil.
+func (a *ServiceData) Diff(b *ServiceData) map[string]interface{} {
+	// Handle nil pointers
+	if a == nil || b == nil {
+		return nil
+	}
+
 	diff := make(map[string]interface{})
 
 	// Compare MyId
@@ -602,7 +650,7 @@ func (a ServiceData) Diff(b ServiceData) map[string]interface{} {
 	// Compare Status
 
 	// Struct type comparison - call Diff method directly
-	nestedDiff := a.Status.Diff(b.Status)
+	nestedDiff := a.Status.Diff(&b.Status)
 	if len(nestedDiff) > 0 {
 		diff["Status"] = nestedDiff
 	}
@@ -620,8 +668,14 @@ func (a ServiceData) Diff(b ServiceData) map[string]interface{} {
 }
 
 // Diff compares this ServiceSettings instance with another and returns a map of differences
-// with only the new values for fields that have changed
-func (a ServiceSettings) Diff(b ServiceSettings) map[string]interface{} {
+// with only the new values for fields that have changed.
+// Returns nil if either pointer is nil.
+func (a *ServiceSettings) Diff(b *ServiceSettings) map[string]interface{} {
+	// Handle nil pointers
+	if a == nil || b == nil {
+		return nil
+	}
+
 	diff := make(map[string]interface{})
 
 	// Compare KeepOnline
@@ -649,8 +703,14 @@ func (a ServiceSettings) Diff(b ServiceSettings) map[string]interface{} {
 }
 
 // Diff compares this Service instance with another and returns a map of differences
-// with only the new values for fields that have changed
-func (a Service) Diff(b Service) map[string]interface{} {
+// with only the new values for fields that have changed.
+// Returns nil if either pointer is nil.
+func (a *Service) Diff(b *Service) map[string]interface{} {
+	// Handle nil pointers
+	if a == nil || b == nil {
+		return nil
+	}
+
 	diff := make(map[string]interface{})
 
 	// Compare Id
@@ -750,7 +810,7 @@ func (a Service) Diff(b Service) map[string]interface{} {
 			diff["Account"] = b.Account
 		}
 	} else {
-		nestedDiff := (*a.Account).Diff(*b.Account)
+		nestedDiff := a.Account.Diff(b.Account)
 		if len(nestedDiff) > 0 {
 			diff["Account"] = nestedDiff
 		}
@@ -764,7 +824,7 @@ func (a Service) Diff(b Service) map[string]interface{} {
 			diff["ServerPod"] = b.ServerPod
 		}
 	} else {
-		nestedDiff := (*a.ServerPod).Diff(*b.ServerPod)
+		nestedDiff := a.ServerPod.Diff(b.ServerPod)
 		if len(nestedDiff) > 0 {
 			diff["ServerPod"] = nestedDiff
 		}

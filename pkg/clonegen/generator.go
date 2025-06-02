@@ -40,6 +40,27 @@ type StructInfo struct {
 	Package    string
 }
 
+// HasComplexFields returns true if the struct has any fields that need deep cloning
+func (s StructInfo) HasComplexFields() bool {
+	for _, field := range s.Fields {
+		if field.FieldType != FieldTypeSimple {
+			return true
+		}
+	}
+	return false
+}
+
+// GetComplexFields returns only the fields that need deep cloning
+func (s StructInfo) GetComplexFields() []StructField {
+	var complexFields []StructField
+	for _, field := range s.Fields {
+		if field.FieldType != FieldTypeSimple {
+			complexFields = append(complexFields, field)
+		}
+	}
+	return complexFields
+}
+
 // CloneGenerator handles the code generation for struct clone methods
 type CloneGenerator struct {
 	Structs      []StructInfo
@@ -167,6 +188,8 @@ func (g *CloneGenerator) categorizeFieldType(fieldType string) FieldType {
 		return FieldTypeMap
 	case fieldType == "interface{}" || strings.Contains(fieldType, "interface"):
 		return FieldTypeInterface
+	case baseType == "json.RawMessage" || baseType == "datatypes.JSON":
+		return FieldTypeSlice // Treat as slice since they're []byte
 	case isSimpleType(baseType):
 		return FieldTypeSimple
 	default:
@@ -196,6 +219,7 @@ func isSimpleType(typeName string) bool {
 		"float64":    true,
 		"complex64":  true,
 		"complex128": true,
+		"time.Time":  true, // Add time.Time as simple type since it's copyable by value
 	}
 	return simpleTypes[typeName]
 }
@@ -210,10 +234,6 @@ func (g *CloneGenerator) GenerateCode() (string, error) {
 	} else {
 		return "", fmt.Errorf("no structs found")
 	}
-
-	// Generate imports if needed
-	// Note: reflect import removed as it's not used in generated clone methods
-	fmt.Fprintln(&buf)
 
 	// Generate clone methods for each struct
 	for _, structInfo := range g.Structs {
@@ -234,35 +254,44 @@ func (g *CloneGenerator) GenerateCode() (string, error) {
 	return string(formatted), nil
 }
 
-// Template for the clone method
-const cloneMethodTmpl = `
+// Template for simple structs (no complex fields)
+const simpleCloneMethodTmpl = `
 // Clone creates a deep copy of the {{.Name}} struct
-func (original {{.Name}}) Clone() {{.Name}} {
-	clone := {{.Name}}{}
+func (original *{{.Name}}) Clone() *{{.Name}} {
+	if original == nil {
+		return nil
+	}
+	// Create new instance - all fields are simple types
+	clone := *original
+	return &clone
+}
+`
 
-	{{range .Fields}}
-	// Clone {{.Name}}
-	{{if eq .FieldType 0}}
-	// Simple type - direct assignment
-	clone.{{.Name}} = original.{{.Name}}
-	{{else if eq .FieldType 1}}
-	// Struct type - recursive clone
+// Template for complex structs (has fields needing deep cloning)
+const complexCloneMethodTmpl = `
+// Clone creates a deep copy of the {{.Name}} struct
+func (original *{{.Name}}) Clone() *{{.Name}} {
+	if original == nil {
+		return nil
+	}
+	// Create new instance and copy all simple fields
+	clone := *original
+
+	// Only handle the fields that need deep cloning
+	{{range .ComplexFields}}
+	{{if eq .FieldType 1}}
 	clone.{{.Name}} = original.{{.Name}}.Clone()
 	{{else if eq .FieldType 2}}
-	// Pointer to struct - create new instance and clone
 	if original.{{.Name}} != nil {
-		cloned{{.Name}} := original.{{.Name}}.Clone()
-		clone.{{.Name}} = &cloned{{.Name}}
+		clone.{{.Name}} = original.{{.Name}}.Clone()
 	}
 	{{else if eq .FieldType 3}}
-	// Slice - create new slice and clone elements
 	if original.{{.Name}} != nil {
 		clone.{{.Name}} = make({{.Type}}, len(original.{{.Name}}))
 		{{if .Type | isSliceOfStructPtr}}
 		for i, item := range original.{{.Name}} {
 			if item != nil {
-				clonedItem := item.Clone()
-				clone.{{.Name}}[i] = &clonedItem
+				clone.{{.Name}}[i] = item.Clone()
 			}
 		}
 		{{else if .Type | isSliceOfStruct}}
@@ -274,20 +303,26 @@ func (original {{.Name}}) Clone() {{.Name}} {
 		{{end}}
 	}
 	{{else if eq .FieldType 4}}
-	// Map - create new map and copy key-value pairs
 	if original.{{.Name}} != nil {
 		clone.{{.Name}} = make({{.Type}})
 		for k, v := range original.{{.Name}} {
+			{{if .Type | isMapOfStruct}}
+			clone.{{.Name}}[k] = v.Clone()
+			{{else if .Type | isMapOfStructPtr}}
+			if v != nil {
+				clone.{{.Name}}[k] = v.Clone()
+			}
+			{{else}}
 			clone.{{.Name}}[k] = v
+			{{end}}
 		}
 	}
 	{{else}}
-	// Complex type - direct assignment (may need manual handling for deep copy)
-	clone.{{.Name}} = original.{{.Name}}
+	// TODO: {{.Name}} ({{.Type}}) may need manual deep copy handling
 	{{end}}
 	{{end}}
 
-	return clone
+	return &clone
 }
 `
 
@@ -317,6 +352,34 @@ func (g *CloneGenerator) generateCloneMethod(structInfo StructInfo) (string, err
 			elementType = strings.TrimPrefix(elementType, "*")
 			return g.KnownStructs[elementType]
 		},
+		"isMapOfStruct": func(s string) bool {
+			if !strings.HasPrefix(s, "map[") {
+				return false
+			}
+			// Extract value type from map[key]value
+			parts := strings.Split(s, "]")
+			if len(parts) < 2 {
+				return false
+			}
+			valueType := strings.TrimPrefix(parts[1], "*")
+			return g.KnownStructs[valueType]
+		},
+		"isMapOfStructPtr": func(s string) bool {
+			if !strings.HasPrefix(s, "map[") {
+				return false
+			}
+			// Extract value type from map[key]value
+			parts := strings.Split(s, "]")
+			if len(parts) < 2 {
+				return false
+			}
+			valueType := parts[1]
+			if !strings.HasPrefix(valueType, "*") {
+				return false
+			}
+			valueType = strings.TrimPrefix(valueType, "*")
+			return g.KnownStructs[valueType]
+		},
 		"getSliceElementType": func(s string) string {
 			return strings.TrimPrefix(s, "[]")
 		},
@@ -326,14 +389,32 @@ func (g *CloneGenerator) generateCloneMethod(structInfo StructInfo) (string, err
 		},
 	}
 
+	// Choose template based on whether struct has complex fields
+	var tmplStr string
+	var data interface{}
+
+	if structInfo.HasComplexFields() {
+		tmplStr = complexCloneMethodTmpl
+		data = struct {
+			StructInfo
+			ComplexFields []StructField
+		}{
+			StructInfo:    structInfo,
+			ComplexFields: structInfo.GetComplexFields(),
+		}
+	} else {
+		tmplStr = simpleCloneMethodTmpl
+		data = structInfo
+	}
+
 	// Parse the template
-	tmpl, err := template.New("clone").Funcs(funcMap).Parse(cloneMethodTmpl)
+	tmpl, err := template.New("clone").Funcs(funcMap).Parse(tmplStr)
 	if err != nil {
 		return "", fmt.Errorf("error parsing template: %v", err)
 	}
 
 	var buf bytes.Buffer
-	if err := tmpl.Execute(&buf, structInfo); err != nil {
+	if err := tmpl.Execute(&buf, data); err != nil {
 		return "", fmt.Errorf("error executing template: %v", err)
 	}
 
@@ -392,8 +473,8 @@ func (g *CloneGenerator) ParseDirectory(dirPath string) error {
 	var goFiles []string
 	for _, file := range files {
 		if !file.IsDir() && strings.HasSuffix(file.Name(), ".go") &&
-		   !strings.HasSuffix(file.Name(), "_test.go") &&
-		   file.Name() != "clone.go" && file.Name() != "diff.go" {
+			!strings.HasSuffix(file.Name(), "_test.go") &&
+			file.Name() != "clone.go" && file.Name() != "diff.go" {
 			goFiles = append(goFiles, dirPath+"/"+file.Name())
 		}
 	}

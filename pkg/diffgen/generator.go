@@ -284,7 +284,7 @@ func (g *DiffGenerator) isJSONField(tagStr string) bool {
 	tagStr = strings.Trim(tagStr, "`")
 	// Check if it contains gorm:"serializer:json" or gorm:"type:jsonb"
 	return strings.Contains(tagStr, `serializer:json`) ||
-		   strings.Contains(tagStr, `type:jsonb`)
+		strings.Contains(tagStr, `type:jsonb`)
 }
 
 // hasJSONFields checks if any struct has JSON fields
@@ -346,11 +346,17 @@ func (g *DiffGenerator) GenerateCode() (string, error) {
 	return string(formatted), nil
 }
 
-// Template for the diff function
+// Template for the diff function - now using pointer receiver
 const diffFunctionTmpl = `
 // Diff compares this {{.Name}} instance with another and returns a map of differences
-// with only the new values for fields that have changed
-func (a {{.Name}}) Diff(b {{.Name}}) map[string]interface{} {
+// with only the new values for fields that have changed.
+// Returns nil if either pointer is nil.
+func (a *{{.Name}}) Diff(b *{{.Name}}) map[string]interface{} {
+	// Handle nil pointers
+	if a == nil || b == nil {
+		return nil
+	}
+
 	diff := make(map[string]interface{})
 
 	{{range .Fields}}
@@ -362,7 +368,7 @@ func (a {{.Name}}) Diff(b {{.Name}}) map[string]interface{} {
 	}
 	{{else if eq .FieldType 1}}
 	// Struct type comparison - call Diff method directly
-	nestedDiff := a.{{.Name}}.Diff(b.{{.Name}})
+	nestedDiff := a.{{.Name}}.Diff(&b.{{.Name}})
 	if len(nestedDiff) > 0 {
 		diff["{{.Name}}"] = nestedDiff
 	}
@@ -373,7 +379,7 @@ func (a {{.Name}}) Diff(b {{.Name}}) map[string]interface{} {
 			diff["{{.Name}}"] = b.{{.Name}}
 		}
 	} else {
-		nestedDiff := (*a.{{.Name}}).Diff(*b.{{.Name}})
+		nestedDiff := a.{{.Name}}.Diff(b.{{.Name}})
 		if len(nestedDiff) > 0 {
 			diff["{{.Name}}"] = nestedDiff
 		}
@@ -559,8 +565,8 @@ func (g *DiffGenerator) ParseDirectory(dirPath string) error {
 	var goFiles []string
 	for _, file := range files {
 		if !file.IsDir() && strings.HasSuffix(file.Name(), ".go") &&
-		   !strings.HasSuffix(file.Name(), "_test.go") &&
-		   file.Name() != "clone.go" && file.Name() != "diff.go" {
+			!strings.HasSuffix(file.Name(), "_test.go") &&
+			file.Name() != "clone.go" && file.Name() != "diff.go" {
 			goFiles = append(goFiles, dirPath+"/"+file.Name())
 		}
 	}
