@@ -77,15 +77,15 @@ func TestDiffCodeGeneration(t *testing.T) {
 		t.Errorf("Expected generated code to be non-empty")
 	}
 
-	// Verify it contains diff methods with new signature
-	if !strings.Contains(code, "func (a Address) Diff(") {
-		t.Errorf("Expected generated code to contain Address Diff method")
+	// Verify it contains diff methods with correct signature
+	if !strings.Contains(code, "func (a *Address) Diff(") {
+		t.Errorf("Expected generated code to contain Address Diff method with pointer receiver")
 	}
-	if !strings.Contains(code, "func (a Contact) Diff(") {
-		t.Errorf("Expected generated code to contain Contact Diff method")
+	if !strings.Contains(code, "func (a *Contact) Diff(") {
+		t.Errorf("Expected generated code to contain Contact Diff method with pointer receiver")
 	}
-	if !strings.Contains(code, "func (a Person) Diff(") {
-		t.Errorf("Expected generated code to contain Person Diff method")
+	if !strings.Contains(code, "func (a *Person) Diff(") {
+		t.Errorf("Expected generated code to contain Person Diff method with pointer receiver")
 	}
 }
 
@@ -159,8 +159,8 @@ func TestDiffFunctionGeneration(t *testing.T) {
 	}
 
 	// Verify the generated function contains expected elements
-	if !strings.Contains(code, "func (a TestAddress) Diff(") {
-		t.Errorf("Expected method signature Diff")
+	if !strings.Contains(code, "func (a *TestAddress) Diff(") {
+		t.Errorf("Expected method signature Diff with pointer receiver")
 	}
 	if !strings.Contains(code, "a.Street != b.Street") {
 		t.Errorf("Expected Street field comparison")

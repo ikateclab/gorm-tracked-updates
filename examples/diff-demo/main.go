@@ -17,7 +17,7 @@ func main() {
 	fmt.Println("\n📝 Step 1: Creating diff generator and parsing structs...")
 	generator := diffgen.New()
 
-	err := generator.ParseDirectory("../structs")
+	err := generator.ParseDirectory("examples/structs")
 	if err != nil {
 		log.Fatalf("❌ Error parsing structs directory: %v", err)
 	}
@@ -40,12 +40,12 @@ func main() {
 
 	// Step 3: Write to file
 	fmt.Println("\n💾 Step 3: Writing generated code to file...")
-	err = generator.WriteToPackageDir("../structs")
+	err = generator.WriteToPackageDir("examples/structs")
 	if err != nil {
 		log.Fatalf("❌ Error writing to file: %v", err)
 	}
 
-	fmt.Println("✅ Generated code written to '../structs/diff.go'")
+	fmt.Println("✅ Generated code written to 'examples/structs/diff.go'")
 
 	// Step 4: Demonstrate the functionality with test data
 	fmt.Println("\n🧪 Step 4: Demonstrating diff functionality...")
@@ -124,7 +124,7 @@ func main() {
 	fmt.Println("   - Perfect for GORM selective updates")
 
 	fmt.Println("\n🔍 The generated diff methods can be found in:")
-	fmt.Println("   - ../structs/diff.go")
+	fmt.Println("   - examples/structs/diff.go")
 
 	fmt.Println("\n🧪 To test the generated methods:")
 	fmt.Println("   - Copy the generated methods to your code")

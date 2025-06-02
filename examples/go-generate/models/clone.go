@@ -1,5 +1,9 @@
 package models
 
+import (
+	"gorm.io/datatypes"
+)
+
 // Clone creates a deep copy of the AccountSettings struct
 func (original *AccountSettings) Clone() *AccountSettings {
 	if original == nil {
@@ -79,7 +83,7 @@ func (original *ServerPod) Clone() *ServerPod {
 
 	// TODO: ServerPodTypeId (uuid.UUID) may need manual deep copy handling
 
-	clone.ServerPodType = original.ServerPodType.Clone()
+	clone.ServerPodType = *(&original.ServerPodType).Clone()
 
 	return &clone
 }
@@ -139,7 +143,7 @@ func (original *ServiceData) Clone() *ServiceData {
 
 	// Only handle the fields that need deep cloning
 
-	clone.Status = original.Status.Clone()
+	clone.Status = *(&original.Status).Clone()
 
 	return &clone
 }

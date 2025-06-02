@@ -90,6 +90,22 @@ func (g *CloneGenerator) ParseFile(filePath string) error {
 	// Extract package name
 	packageName := node.Name.Name
 
+	// Extract imports
+	for _, imp := range node.Imports {
+		importPath := strings.Trim(imp.Path.Value, "\"")
+		var importName string
+
+		if imp.Name != nil {
+			importName = imp.Name.Name
+		} else {
+			// Extract name from path
+			parts := strings.Split(importPath, "/")
+			importName = parts[len(parts)-1]
+		}
+
+		g.Imports[importPath] = importName
+	}
+
 	// First pass: collect struct names
 	ast.Inspect(node, func(n ast.Node) bool {
 		if typeSpec, ok := n.(*ast.TypeSpec); ok {
@@ -224,6 +240,27 @@ func isSimpleType(typeName string) bool {
 	return simpleTypes[typeName]
 }
 
+// getRequiredImports determines which imports are needed for the generated code
+func (g *CloneGenerator) getRequiredImports() []string {
+	var imports []string
+	importSet := make(map[string]bool)
+
+	// Check all struct fields for types that need imports
+	for _, structInfo := range g.Structs {
+		for _, field := range structInfo.Fields {
+			// Check if field type contains datatypes.JSON
+			if strings.Contains(field.Type, "datatypes.JSON") {
+				if !importSet["gorm.io/datatypes"] {
+					imports = append(imports, "gorm.io/datatypes")
+					importSet["gorm.io/datatypes"] = true
+				}
+			}
+		}
+	}
+
+	return imports
+}
+
 // GenerateCode generates the code for all struct clone methods
 func (g *CloneGenerator) GenerateCode() (string, error) {
 	var buf bytes.Buffer
@@ -233,6 +270,16 @@ func (g *CloneGenerator) GenerateCode() (string, error) {
 		fmt.Fprintf(&buf, "package %s\n\n", g.Structs[0].Package)
 	} else {
 		return "", fmt.Errorf("no structs found")
+	}
+
+	// Generate imports if needed
+	requiredImports := g.getRequiredImports()
+	if len(requiredImports) > 0 {
+		buf.WriteString("import (\n")
+		for _, imp := range requiredImports {
+			fmt.Fprintf(&buf, "\t\"%s\"\n", imp)
+		}
+		buf.WriteString(")\n\n")
 	}
 
 	// Generate clone methods for each struct
@@ -280,7 +327,7 @@ func (original *{{.Name}}) Clone() *{{.Name}} {
 	// Only handle the fields that need deep cloning
 	{{range .ComplexFields}}
 	{{if eq .FieldType 1}}
-	clone.{{.Name}} = original.{{.Name}}.Clone()
+	clone.{{.Name}} = *(&original.{{.Name}}).Clone()
 	{{else if eq .FieldType 2}}
 	if original.{{.Name}} != nil {
 		clone.{{.Name}} = original.{{.Name}}.Clone()

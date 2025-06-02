@@ -77,15 +77,15 @@ func TestCloneCodeGeneration(t *testing.T) {
 		t.Errorf("Expected generated code to be non-empty")
 	}
 
-	// Verify it contains clone methods with new signature
-	if !strings.Contains(code, "func (original Address) Clone()") {
-		t.Errorf("Expected generated code to contain Address Clone method")
+	// Verify it contains clone methods with new pointer-based signature
+	if !strings.Contains(code, "func (original *Address) Clone() *Address") {
+		t.Errorf("Expected generated code to contain Address Clone method with pointer signature")
 	}
-	if !strings.Contains(code, "func (original Contact) Clone()") {
-		t.Errorf("Expected generated code to contain Contact Clone method")
+	if !strings.Contains(code, "func (original *Contact) Clone() *Contact") {
+		t.Errorf("Expected generated code to contain Contact Clone method with pointer signature")
 	}
-	if !strings.Contains(code, "func (original Person) Clone()") {
-		t.Errorf("Expected generated code to contain Person Clone method")
+	if !strings.Contains(code, "func (original *Person) Clone() *Person") {
+		t.Errorf("Expected generated code to contain Person Clone method with pointer signature")
 	}
 }
 
@@ -140,14 +140,12 @@ func TestCloneMethodGeneration(t *testing.T) {
 	}
 
 	// Verify the generated method contains expected elements
-	if !strings.Contains(code, "func (original TestAddress) Clone()") {
-		t.Errorf("Expected method signature Clone")
+	if !strings.Contains(code, "func (original *TestAddress) Clone() *TestAddress") {
+		t.Errorf("Expected method signature Clone with pointer receiver and return type")
 	}
-	if !strings.Contains(code, "clone.Street = original.Street") {
-		t.Errorf("Expected Street field assignment")
-	}
-	if !strings.Contains(code, "clone.City = original.City") {
-		t.Errorf("Expected City field assignment")
+	// For simple structs, the new generator uses shallow copy with *original
+	if !strings.Contains(code, "clone := *original") {
+		t.Errorf("Expected shallow copy assignment for simple struct")
 	}
 }
 

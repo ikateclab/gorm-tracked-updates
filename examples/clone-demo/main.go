@@ -18,7 +18,7 @@ func main() {
 	fmt.Println("\n📝 Step 1: Creating clone generator and parsing structs...")
 	generator := clonegen.New()
 
-	err := generator.ParseDirectory("../structs")
+	err := generator.ParseDirectory("examples/structs")
 	if err != nil {
 		log.Fatalf("❌ Error parsing structs directory: %v", err)
 	}
@@ -41,12 +41,12 @@ func main() {
 
 	// Step 3: Write to file
 	fmt.Println("\n💾 Step 3: Writing generated code to file...")
-	err = generator.WriteToPackageDir("../structs")
+	err = generator.WriteToPackageDir("examples/structs")
 	if err != nil {
 		log.Fatalf("❌ Error writing to file: %v", err)
 	}
 
-	fmt.Println("✅ Generated code written to '../structs/clone.go'")
+	fmt.Println("✅ Generated code written to 'examples/structs/clone.go'")
 
 	// Step 4: Demonstrate the functionality with manual cloning
 	fmt.Println("\n🧪 Step 4: Demonstrating clone functionality...")
@@ -136,7 +136,7 @@ func main() {
 	fmt.Println("   - Compile-time method resolution")
 
 	fmt.Println("\n🔍 The generated clone methods can be found in:")
-	fmt.Println("   - ../structs/clone.go")
+	fmt.Println("   - examples/structs/clone.go")
 
 	fmt.Println("\n🧪 To test the generated methods:")
 	fmt.Println("   - Copy the generated methods to your code")
