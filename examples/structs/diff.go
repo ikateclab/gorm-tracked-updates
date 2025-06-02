@@ -5,8 +5,14 @@ import (
 )
 
 // Diff compares this Address instance with another and returns a map of differences
-// with only the new values for fields that have changed
-func (a Address) Diff(b Address) map[string]interface{} {
+// with only the new values for fields that have changed.
+// Returns nil if either pointer is nil.
+func (a *Address) Diff(b *Address) map[string]interface{} {
+	// Handle nil pointers
+	if a == nil || b == nil {
+		return nil
+	}
+
 	diff := make(map[string]interface{})
 
 	// Compare Street
@@ -48,8 +54,14 @@ func (a Address) Diff(b Address) map[string]interface{} {
 }
 
 // Diff compares this Contact instance with another and returns a map of differences
-// with only the new values for fields that have changed
-func (a Contact) Diff(b Contact) map[string]interface{} {
+// with only the new values for fields that have changed.
+// Returns nil if either pointer is nil.
+func (a *Contact) Diff(b *Contact) map[string]interface{} {
+	// Handle nil pointers
+	if a == nil || b == nil {
+		return nil
+	}
+
 	diff := make(map[string]interface{})
 
 	// Compare Type
@@ -70,8 +82,14 @@ func (a Contact) Diff(b Contact) map[string]interface{} {
 }
 
 // Diff compares this Person instance with another and returns a map of differences
-// with only the new values for fields that have changed
-func (a Person) Diff(b Person) map[string]interface{} {
+// with only the new values for fields that have changed.
+// Returns nil if either pointer is nil.
+func (a *Person) Diff(b *Person) map[string]interface{} {
+	// Handle nil pointers
+	if a == nil || b == nil {
+		return nil
+	}
+
 	diff := make(map[string]interface{})
 
 	// Compare Name
@@ -91,7 +109,7 @@ func (a Person) Diff(b Person) map[string]interface{} {
 	// Compare Address
 
 	// Struct type comparison - call Diff method directly
-	nestedDiff := a.Address.Diff(b.Address)
+	nestedDiff := a.Address.Diff(&b.Address)
 	if len(nestedDiff) > 0 {
 		diff["Address"] = nestedDiff
 	}
@@ -111,7 +129,7 @@ func (a Person) Diff(b Person) map[string]interface{} {
 			diff["Manager"] = b.Manager
 		}
 	} else {
-		nestedDiff := (*a.Manager).Diff(*b.Manager)
+		nestedDiff := a.Manager.Diff(b.Manager)
 		if len(nestedDiff) > 0 {
 			diff["Manager"] = nestedDiff
 		}
@@ -128,8 +146,14 @@ func (a Person) Diff(b Person) map[string]interface{} {
 }
 
 // Diff compares this Company instance with another and returns a map of differences
-// with only the new values for fields that have changed
-func (a Company) Diff(b Company) map[string]interface{} {
+// with only the new values for fields that have changed.
+// Returns nil if either pointer is nil.
+func (a *Company) Diff(b *Company) map[string]interface{} {
+	// Handle nil pointers
+	if a == nil || b == nil {
+		return nil
+	}
+
 	diff := make(map[string]interface{})
 
 	// Compare Name
@@ -142,7 +166,7 @@ func (a Company) Diff(b Company) map[string]interface{} {
 	// Compare Address
 
 	// Struct type comparison - call Diff method directly
-	nestedDiff := a.Address.Diff(b.Address)
+	nestedDiff := a.Address.Diff(&b.Address)
 	if len(nestedDiff) > 0 {
 		diff["Address"] = nestedDiff
 	}
@@ -162,7 +186,7 @@ func (a Company) Diff(b Company) map[string]interface{} {
 			diff["CEO"] = b.CEO
 		}
 	} else {
-		nestedDiff := (*a.CEO).Diff(*b.CEO)
+		nestedDiff := a.CEO.Diff(b.CEO)
 		if len(nestedDiff) > 0 {
 			diff["CEO"] = nestedDiff
 		}
@@ -186,8 +210,14 @@ func (a Company) Diff(b Company) map[string]interface{} {
 }
 
 // Diff compares this Project instance with another and returns a map of differences
-// with only the new values for fields that have changed
-func (a Project) Diff(b Project) map[string]interface{} {
+// with only the new values for fields that have changed.
+// Returns nil if either pointer is nil.
+func (a *Project) Diff(b *Project) map[string]interface{} {
+	// Handle nil pointers
+	if a == nil || b == nil {
+		return nil
+	}
+
 	diff := make(map[string]interface{})
 
 	// Compare Name
@@ -212,7 +242,7 @@ func (a Project) Diff(b Project) map[string]interface{} {
 			diff["TeamLead"] = b.TeamLead
 		}
 	} else {
-		nestedDiff := (*a.TeamLead).Diff(*b.TeamLead)
+		nestedDiff := a.TeamLead.Diff(b.TeamLead)
 		if len(nestedDiff) > 0 {
 			diff["TeamLead"] = nestedDiff
 		}
@@ -233,7 +263,7 @@ func (a Project) Diff(b Project) map[string]interface{} {
 			diff["Company"] = b.Company
 		}
 	} else {
-		nestedDiff := (*a.Company).Diff(*b.Company)
+		nestedDiff := a.Company.Diff(b.Company)
 		if len(nestedDiff) > 0 {
 			diff["Company"] = nestedDiff
 		}

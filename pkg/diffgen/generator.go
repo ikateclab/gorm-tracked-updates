@@ -9,6 +9,7 @@ import (
 	"go/token"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"text/template"
 )
@@ -287,6 +288,34 @@ func (g *DiffGenerator) isJSONField(tagStr string) bool {
 		strings.Contains(tagStr, `type:jsonb`)
 }
 
+// extractColumnName extracts the column name from GORM tag or converts field name to snake_case
+func (g *DiffGenerator) extractColumnName(fieldName, tagStr string) string {
+	if tagStr == "" {
+		return g.toSnakeCase(fieldName)
+	}
+
+	// Remove the backticks from the tag string
+	tagStr = strings.Trim(tagStr, "`")
+
+	// Look for gorm:"column:columnname" pattern
+	re := regexp.MustCompile(`gorm:"[^"]*column:([^;"]*)`)
+	matches := re.FindStringSubmatch(tagStr)
+	if len(matches) > 1 && matches[1] != "" {
+		return matches[1]
+	}
+
+	// If no column tag found, convert field name to snake_case (GORM default)
+	return g.toSnakeCase(fieldName)
+}
+
+// toSnakeCase converts CamelCase to snake_case
+func (g *DiffGenerator) toSnakeCase(str string) string {
+	// Insert underscore before uppercase letters (except the first one)
+	re := regexp.MustCompile(`([a-z0-9])([A-Z])`)
+	snake := re.ReplaceAllString(str, `${1}_${2}`)
+	return strings.ToLower(snake)
+}
+
 // hasJSONFields checks if any struct has JSON fields
 func (g *DiffGenerator) hasJSONFields() bool {
 	for _, structInfo := range g.Structs {
@@ -391,7 +420,7 @@ func (a *{{.Name}}) Diff(b *{{.Name}}) map[string]interface{} {
 	if !bytes.Equal([]byte(a.{{.Name}}), []byte(b.{{.Name}})) {
 		jsonValue, err := sonic.Marshal(b.{{.Name}})
 		if err == nil {
-			diff["{{.Name}}"] = gorm.Expr("? || ?", clause.Column{Name: "{{.Name}}"}, string(jsonValue))
+			diff["{{.Name}}"] = gorm.Expr("? || ?", clause.Column{Name: "{{getColumnName .Name .Tag}}"}, string(jsonValue))
 		} else {
 			// Fallback to regular assignment if JSON marshaling fails
 			diff["{{.Name}}"] = b.{{.Name}}
@@ -402,7 +431,7 @@ func (a *{{.Name}}) Diff(b *{{.Name}}) map[string]interface{} {
 	if !reflect.DeepEqual(a.{{.Name}}, b.{{.Name}}) {
 		jsonValue, err := sonic.Marshal(b.{{.Name}})
 		if err == nil {
-			diff["{{.Name}}"] = gorm.Expr("? || ?", clause.Column{Name: "{{.Name}}"}, string(jsonValue))
+			diff["{{.Name}}"] = gorm.Expr("? || ?", clause.Column{Name: "{{getColumnName .Name .Tag}}"}, string(jsonValue))
 		} else {
 			// Fallback to regular assignment if JSON marshaling fails
 			diff["{{.Name}}"] = b.{{.Name}}
@@ -413,7 +442,7 @@ func (a *{{.Name}}) Diff(b *{{.Name}}) map[string]interface{} {
 	if a.{{.Name}} != b.{{.Name}} {
 		jsonValue, err := sonic.Marshal(b.{{.Name}})
 		if err == nil {
-			diff["{{.Name}}"] = gorm.Expr("? || ?", clause.Column{Name: "{{.Name}}"}, string(jsonValue))
+			diff["{{.Name}}"] = gorm.Expr("? || ?", clause.Column{Name: "{{getColumnName .Name .Tag}}"}, string(jsonValue))
 		} else {
 			// Fallback to regular assignment if JSON marshaling fails
 			diff["{{.Name}}"] = b.{{.Name}}
@@ -480,6 +509,9 @@ func (g *DiffGenerator) generateDiffFunction(structInfo StructInfo) (string, err
 		},
 		"hasSuffix": func(s, suffix string) bool {
 			return strings.HasSuffix(s, suffix)
+		},
+		"getColumnName": func(fieldName, tagStr string) string {
+			return g.extractColumnName(fieldName, tagStr)
 		},
 	}
 

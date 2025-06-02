@@ -71,7 +71,7 @@ func (a *Account) Diff(b *Account) map[string]interface{} {
 	if a.Settings != b.Settings {
 		jsonValue, err := sonic.Marshal(b.Settings)
 		if err == nil {
-			diff["Settings"] = gorm.Expr("? || ?", clause.Column{Name: "Settings"}, string(jsonValue))
+			diff["Settings"] = gorm.Expr("? || ?", clause.Column{Name: "settings"}, string(jsonValue))
 		} else {
 			// Fallback to regular assignment if JSON marshaling fails
 			diff["Settings"] = b.Settings
@@ -86,7 +86,7 @@ func (a *Account) Diff(b *Account) map[string]interface{} {
 	if a.Data != b.Data {
 		jsonValue, err := sonic.Marshal(b.Data)
 		if err == nil {
-			diff["Data"] = gorm.Expr("? || ?", clause.Column{Name: "Data"}, string(jsonValue))
+			diff["Data"] = gorm.Expr("? || ?", clause.Column{Name: "data"}, string(jsonValue))
 		} else {
 			// Fallback to regular assignment if JSON marshaling fails
 			diff["Data"] = b.Data
@@ -198,7 +198,7 @@ func (a *ServerPod) Diff(b *ServerPod) map[string]interface{} {
 	if !bytes.Equal([]byte(a.Settings), []byte(b.Settings)) {
 		jsonValue, err := sonic.Marshal(b.Settings)
 		if err == nil {
-			diff["Settings"] = gorm.Expr("? || ?", clause.Column{Name: "Settings"}, string(jsonValue))
+			diff["Settings"] = gorm.Expr("? || ?", clause.Column{Name: "settings"}, string(jsonValue))
 		} else {
 			// Fallback to regular assignment if JSON marshaling fails
 			diff["Settings"] = b.Settings
@@ -322,7 +322,7 @@ func (a *ServerPodType) Diff(b *ServerPodType) map[string]interface{} {
 	if a.Version != b.Version {
 		jsonValue, err := sonic.Marshal(b.Version)
 		if err == nil {
-			diff["Version"] = gorm.Expr("? || ?", clause.Column{Name: "Version"}, string(jsonValue))
+			diff["Version"] = gorm.Expr("? || ?", clause.Column{Name: "version"}, string(jsonValue))
 		} else {
 			// Fallback to regular assignment if JSON marshaling fails
 			diff["Version"] = b.Version
@@ -386,7 +386,7 @@ func (a *ServerPodType) Diff(b *ServerPodType) map[string]interface{} {
 	if !reflect.DeepEqual(a.AccountIdWhitelist, b.AccountIdWhitelist) {
 		jsonValue, err := sonic.Marshal(b.AccountIdWhitelist)
 		if err == nil {
-			diff["AccountIdWhitelist"] = gorm.Expr("? || ?", clause.Column{Name: "AccountIdWhitelist"}, string(jsonValue))
+			diff["AccountIdWhitelist"] = gorm.Expr("? || ?", clause.Column{Name: "account_id_whitelist"}, string(jsonValue))
 		} else {
 			// Fallback to regular assignment if JSON marshaling fails
 			diff["AccountIdWhitelist"] = b.AccountIdWhitelist
@@ -401,7 +401,7 @@ func (a *ServerPodType) Diff(b *ServerPodType) map[string]interface{} {
 	if !reflect.DeepEqual(a.ServiceIdWhitelist, b.ServiceIdWhitelist) {
 		jsonValue, err := sonic.Marshal(b.ServiceIdWhitelist)
 		if err == nil {
-			diff["ServiceIdWhitelist"] = gorm.Expr("? || ?", clause.Column{Name: "ServiceIdWhitelist"}, string(jsonValue))
+			diff["ServiceIdWhitelist"] = gorm.Expr("? || ?", clause.Column{Name: "service_id_whitelist"}, string(jsonValue))
 		} else {
 			// Fallback to regular assignment if JSON marshaling fails
 			diff["ServiceIdWhitelist"] = b.ServiceIdWhitelist
@@ -737,7 +737,7 @@ func (a *Service) Diff(b *Service) map[string]interface{} {
 	if a.Data != b.Data {
 		jsonValue, err := sonic.Marshal(b.Data)
 		if err == nil {
-			diff["Data"] = gorm.Expr("? || ?", clause.Column{Name: "Data"}, string(jsonValue))
+			diff["Data"] = gorm.Expr("? || ?", clause.Column{Name: "data"}, string(jsonValue))
 		} else {
 			// Fallback to regular assignment if JSON marshaling fails
 			diff["Data"] = b.Data
@@ -752,7 +752,7 @@ func (a *Service) Diff(b *Service) map[string]interface{} {
 	if a.Settings != b.Settings {
 		jsonValue, err := sonic.Marshal(b.Settings)
 		if err == nil {
-			diff["Settings"] = gorm.Expr("? || ?", clause.Column{Name: "Settings"}, string(jsonValue))
+			diff["Settings"] = gorm.Expr("? || ?", clause.Column{Name: "settings"}, string(jsonValue))
 		} else {
 			// Fallback to regular assignment if JSON marshaling fails
 			diff["Settings"] = b.Settings
