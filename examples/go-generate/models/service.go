@@ -7,6 +7,8 @@ import (
 	"gorm.io/gorm"
 )
 
+// ServiceDataStatus represents the status information for a service
+// @jsonb
 type ServiceDataStatus struct {
 	IsSyncing           bool   `json:"isSyncing,omitempty"`
 	IsConnected         bool   `json:"isConnected,omitempty"`
@@ -31,6 +33,8 @@ type ServiceDataStatus struct {
 	WaVersion           string `json:"waVersion,omitempty"`
 }
 
+// ServiceData represents service data stored in JSONB
+// @jsonb
 type ServiceData struct {
 	MyId                 string            `json:"myId,omitempty"`
 	LastSyncAt           *time.Time        `json:"lastSyncAt,omitempty"`
@@ -41,6 +45,8 @@ type ServiceData struct {
 	StatusTimestamp      *time.Time        `json:"statusTimestamp,omitempty"`
 }
 
+// ServiceSettings represents service settings stored in JSONB
+// @jsonb
 type ServiceSettings struct {
 	KeepOnline        bool   `json:"keepOnline,omitempty"`
 	WppConnectVersion string `json:"wppConnectVersion,omitempty"`
