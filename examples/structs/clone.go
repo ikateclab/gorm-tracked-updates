@@ -36,7 +36,7 @@ func (original *Person) Clone() *Person {
 		clone.Contacts = make([]Contact, len(original.Contacts))
 
 		for i, item := range original.Contacts {
-			clone.Contacts[i] = item.Clone()
+			clone.Contacts[i] = *item.Clone()
 		}
 
 	}
@@ -73,7 +73,7 @@ func (original *Company) Clone() *Company {
 		clone.Employees = make([]Person, len(original.Employees))
 
 		for i, item := range original.Employees {
-			clone.Employees[i] = item.Clone()
+			clone.Employees[i] = *item.Clone()
 		}
 
 	}

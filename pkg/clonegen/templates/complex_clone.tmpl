@@ -25,7 +25,7 @@ func (original *{{.Name}}) Clone() *{{.Name}} {
 		}
 		{{else if .Type | isSliceOfStruct}}
 		for i, item := range original.{{.Name}} {
-			clone.{{.Name}}[i] = item.Clone()
+			clone.{{.Name}}[i] = *item.Clone()
 		}
 		{{else}}
 		copy(clone.{{.Name}}, original.{{.Name}})
@@ -36,7 +36,7 @@ func (original *{{.Name}}) Clone() *{{.Name}} {
 		clone.{{.Name}} = make({{.Type}})
 		for k, v := range original.{{.Name}} {
 			{{if .Type | isMapOfStruct}}
-			clone.{{.Name}}[k] = v.Clone()
+			clone.{{.Name}}[k] = *v.Clone()
 			{{else if .Type | isMapOfStructPtr}}
 			if v != nil {
 				clone.{{.Name}}[k] = v.Clone()
