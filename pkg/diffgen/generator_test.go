@@ -153,7 +153,7 @@ func TestDiffFunctionGeneration(t *testing.T) {
 		},
 	}
 
-	code, err := generator.generateDiffFunction(structInfo)
+	code, err := generator.GenerateDiffFunction(structInfo)
 	if err != nil {
 		t.Fatalf("Error generating diff function: %v", err)
 	}
@@ -424,5 +424,28 @@ func TestJSONFieldDetection(t *testing.T) {
 				t.Errorf("Expected isJSONField(%q) = %v, got %v", tc.tag, tc.expected, result)
 			}
 		})
+	}
+}
+
+func TestEmbeddedTemplate(t *testing.T) {
+	// Test that the embedded template is not empty
+	if diffFunctionTemplate == "" {
+		t.Error("Embedded template should not be empty")
+	}
+
+	// Test that the template contains expected content
+	if !strings.Contains(diffFunctionTemplate, "func (a *{{.Name}}) Diff(") {
+		t.Error("Template should contain the diff function signature")
+	}
+
+	// Test that template can be parsed
+	generator := New()
+	tmpl, err := generator.loadDiffTemplate()
+	if err != nil {
+		t.Fatalf("Should be able to parse embedded template: %v", err)
+	}
+
+	if tmpl == nil {
+		t.Error("Parsed template should not be nil")
 	}
 }

@@ -2,6 +2,7 @@ package diffgen
 
 import (
 	"bytes"
+	_ "embed"
 	"fmt"
 	"go/ast"
 	"go/format"
@@ -13,6 +14,11 @@ import (
 	"strings"
 	"text/template"
 )
+
+// diffFunctionTemplate contains the embedded template for generating diff functions.
+// The template file must exist at build time for the embed directive to work.
+//go:embed templates/diff_function.tmpl
+var diffFunctionTemplate string
 
 // StructField represents a field in a struct
 type StructField struct {
@@ -40,6 +46,38 @@ const (
 	FieldTypeComparable                     // Other types that support == comparison
 	FieldTypeComplex                        // Any other complex type requiring reflection
 )
+
+// String returns the string representation of FieldType for template usage
+func (ft FieldType) String() string {
+	switch ft {
+	case FieldTypeSimple:
+		return "Simple"
+	case FieldTypeStruct:
+		return "Struct"
+	case FieldTypeStructPtr:
+		return "StructPtr"
+	case FieldTypeSlice:
+		return "Slice"
+	case FieldTypeMap:
+		return "Map"
+	case FieldTypeInterface:
+		return "Interface"
+	case FieldTypeJSON:
+		return "JSON"
+	case FieldTypeTime:
+		return "Time"
+	case FieldTypeUUID:
+		return "UUID"
+	case FieldTypeGormDeletedAt:
+		return "GormDeletedAt"
+	case FieldTypeComparable:
+		return "Comparable"
+	case FieldTypeComplex:
+		return "Complex"
+	default:
+		return "Unknown"
+	}
+}
 
 // StructInfo represents information about a struct
 type StructInfo struct {
@@ -69,19 +107,38 @@ func New() *DiffGenerator {
 
 // ParseFile parses a Go file and extracts struct information
 func (g *DiffGenerator) ParseFile(filePath string) error {
+	// Parse the AST
+	node, packageName, err := g.parseFileAST(filePath)
+	if err != nil {
+		return err
+	}
+
+	// Collect struct names for reference
+	g.collectStructNames(node)
+
+	// Extract imports
+	g.extractImports(node.Imports)
+
+	// Extract struct details
+	return g.extractStructDetails(node, filePath, packageName)
+}
+
+// parseFileAST parses a Go file and returns the AST node and package name
+func (g *DiffGenerator) parseFileAST(filePath string) (*ast.File, string, error) {
 	// Set up the file set
 	fset := token.NewFileSet()
 
 	// Parse the file
 	node, err := parser.ParseFile(fset, filePath, nil, parser.ParseComments)
 	if err != nil {
-		return fmt.Errorf("error parsing file: %v", err)
+		return nil, "", fmt.Errorf("error parsing file: %v", err)
 	}
 
-	// Extract package name
-	packageName := node.Name.Name
+	return node, node.Name.Name, nil
+}
 
-	// First pass: collect struct names
+// collectStructNames collects struct names for reference during type determination
+func (g *DiffGenerator) collectStructNames(node *ast.File) {
 	ast.Inspect(node, func(n ast.Node) bool {
 		if typeSpec, ok := n.(*ast.TypeSpec); ok {
 			if _, isStruct := typeSpec.Type.(*ast.StructType); isStruct {
@@ -90,24 +147,10 @@ func (g *DiffGenerator) ParseFile(filePath string) error {
 		}
 		return true
 	})
+}
 
-	// Extract imports
-	for _, imp := range node.Imports {
-		importPath := strings.Trim(imp.Path.Value, "\"")
-		var importName string
-
-		if imp.Name != nil {
-			importName = imp.Name.Name
-		} else {
-			// Extract name from path
-			parts := strings.Split(importPath, "/")
-			importName = parts[len(parts)-1]
-		}
-
-		g.Imports[importPath] = importName
-	}
-
-	// Second pass: extract struct details from declarations
+// extractStructDetails extracts detailed struct information from AST declarations
+func (g *DiffGenerator) extractStructDetails(node *ast.File, filePath, packageName string) error {
 	for _, decl := range node.Decls {
 		if genDecl, ok := decl.(*ast.GenDecl); ok && genDecl.Tok == token.TYPE {
 			for _, spec := range genDecl.Specs {
@@ -137,6 +180,24 @@ func (g *DiffGenerator) ParseFile(filePath string) error {
 	return nil
 }
 
+// extractImports extracts import information from AST imports
+func (g *DiffGenerator) extractImports(imports []*ast.ImportSpec) {
+	for _, imp := range imports {
+		importPath := strings.Trim(imp.Path.Value, "\"")
+		var importName string
+
+		if imp.Name != nil {
+			importName = imp.Name.Name
+		} else {
+			// Extract name from path
+			parts := strings.Split(importPath, "/")
+			importName = parts[len(parts)-1]
+		}
+
+		g.Imports[importPath] = importName
+	}
+}
+
 // extractFields extracts field information from a struct
 func (g *DiffGenerator) extractFields(structType *ast.StructType) []StructField {
 	var fields []StructField
@@ -150,7 +211,8 @@ func (g *DiffGenerator) extractFields(structType *ast.StructType) []StructField 
 		// Get field type as string
 		var buf bytes.Buffer
 		if err := format.Node(&buf, token.NewFileSet(), field.Type); err != nil {
-			// Skip this field if we can't format its type
+			// Log error and skip this field - we can't process fields we can't format
+			fmt.Printf("Warning: Could not format field type for field %v: %v\n", field.Names, err)
 			continue
 		}
 		typeStr := buf.String()
@@ -177,25 +239,14 @@ func (g *DiffGenerator) extractFields(structType *ast.StructType) []StructField 
 	return fields
 }
 
-// determineFieldType analyzes a type to determine its category
-func (g *DiffGenerator) determineFieldType(expr ast.Expr, typeStr string, tagStr string) FieldType {
-	// Check if it's a JSON field - prioritize JSON treatment for JSONB fields
-	if g.isJSONField(tagStr) {
-		// Always treat fields with JSON tags as JSON fields for proper gorm.Expr handling
-		// This ensures JSONB fields use JSON merging instead of struct comparison
-		return FieldTypeJSON
-	}
-
+// determineKnownTypeByString checks for known types by their string representation
+func (g *DiffGenerator) determineKnownTypeByString(typeStr string) FieldType {
 	// Check for specific known types by string representation
 	// Handle both qualified and unqualified names
 	switch typeStr {
-	case "time.Time":
+	case "time.Time", "*time.Time":
 		return FieldTypeTime
-	case "*time.Time":
-		return FieldTypeTime
-	case "uuid.UUID":
-		return FieldTypeUUID
-	case "*uuid.UUID":
+	case "uuid.UUID", "*uuid.UUID":
 		return FieldTypeUUID
 	case "gorm.DeletedAt":
 		return FieldTypeGormDeletedAt
@@ -212,79 +263,111 @@ func (g *DiffGenerator) determineFieldType(expr ast.Expr, typeStr string, tagStr
 		return FieldTypeGormDeletedAt
 	}
 
+	// Return FieldTypeComplex to indicate no known type found
+	return FieldTypeComplex
+}
+
+// determineFieldType analyzes a type to determine its category
+func (g *DiffGenerator) determineFieldType(expr ast.Expr, typeStr string, tagStr string) FieldType {
+	// Check if it's a JSON field - prioritize JSON treatment for JSONB fields
+	if g.isJSONField(tagStr) {
+		// Always treat fields with JSON tags as JSON fields for proper gorm.Expr handling
+		// This ensures JSONB fields use JSON merging instead of struct comparison
+		return FieldTypeJSON
+	}
+
+	// Check for specific known types by string representation
+	if fieldType := g.determineKnownTypeByString(typeStr); fieldType != FieldTypeComplex {
+		return fieldType
+	}
+
+	return g.determineFieldTypeByAST(expr)
+}
+
+// determineFieldTypeByAST analyzes AST expressions to determine field type
+func (g *DiffGenerator) determineFieldTypeByAST(expr ast.Expr) FieldType {
 	switch t := expr.(type) {
 	case *ast.Ident:
-		// Check if it's a known struct
-		if g.KnownStructs[t.Name] {
-			return FieldTypeStruct
-		}
-		// Check for common patterns that indicate slice types (but not JsonbStringSlice with JSON tags)
-		if strings.Contains(strings.ToLower(t.Name), "slice") {
-			return FieldTypeComplex
-		}
-		// Otherwise it's a simple type
-		return FieldTypeSimple
-
+		return g.handleIdentType(t)
 	case *ast.StarExpr:
-		// Check if it's a pointer to a known struct
-		if ident, ok := t.X.(*ast.Ident); ok && g.KnownStructs[ident.Name] {
-			return FieldTypeStructPtr
-		}
-		// Check for pointer to time.Time
-		if ident, ok := t.X.(*ast.SelectorExpr); ok {
-			if x, ok := ident.X.(*ast.Ident); ok && x.Name == "time" && ident.Sel.Name == "Time" {
-				return FieldTypeTime
-			}
-		}
-		// Check for pointer to uuid.UUID
-		if ident, ok := t.X.(*ast.SelectorExpr); ok {
-			if x, ok := ident.X.(*ast.Ident); ok && x.Name == "uuid" && ident.Sel.Name == "UUID" {
-				return FieldTypeUUID
-			}
-		}
-		// For other pointer types, they're comparable if the underlying type is comparable
-		return FieldTypeComparable
-
+		return g.handlePointerType(t)
 	case *ast.ArrayType:
 		return FieldTypeSlice
-
 	case *ast.MapType:
 		return FieldTypeMap
-
 	case *ast.InterfaceType:
 		return FieldTypeInterface
-
 	case *ast.SelectorExpr:
-		// Check for specific external package types
-		if x, ok := t.X.(*ast.Ident); ok {
-			switch x.Name {
-			case "time":
-				if t.Sel.Name == "Time" {
-					return FieldTypeTime
-				}
-			case "uuid":
-				if t.Sel.Name == "UUID" {
-					return FieldTypeUUID
-				}
-			case "gorm":
-				if t.Sel.Name == "DeletedAt" {
-					return FieldTypeGormDeletedAt
-				}
-			case "datatypes":
-				// GORM datatypes.JSON has []byte underlying type and supports direct comparison
-				if t.Sel.Name == "JSON" {
-					return FieldTypeJSON
-				}
-				// Other GORM datatypes might be comparable
-				return FieldTypeComparable
-			}
-		}
-		// For other external types, assume they're comparable unless proven otherwise
-		return FieldTypeComparable
-
+		return g.handleSelectorType(t)
 	default:
 		return FieldTypeComplex
 	}
+}
+
+// handleIdentType handles ast.Ident expressions
+func (g *DiffGenerator) handleIdentType(t *ast.Ident) FieldType {
+	// Check if it's a known struct
+	if g.KnownStructs[t.Name] {
+		return FieldTypeStruct
+	}
+	// Check for common patterns that indicate slice types (but not JsonbStringSlice with JSON tags)
+	if strings.Contains(strings.ToLower(t.Name), "slice") {
+		return FieldTypeComplex
+	}
+	// Otherwise it's a simple type
+	return FieldTypeSimple
+}
+
+// handlePointerType handles ast.StarExpr expressions (pointer types)
+func (g *DiffGenerator) handlePointerType(t *ast.StarExpr) FieldType {
+	// Check if it's a pointer to a known struct
+	if ident, ok := t.X.(*ast.Ident); ok && g.KnownStructs[ident.Name] {
+		return FieldTypeStructPtr
+	}
+	// Check for pointer to time.Time
+	if ident, ok := t.X.(*ast.SelectorExpr); ok {
+		if x, ok := ident.X.(*ast.Ident); ok && x.Name == "time" && ident.Sel.Name == "Time" {
+			return FieldTypeTime
+		}
+	}
+	// Check for pointer to uuid.UUID
+	if ident, ok := t.X.(*ast.SelectorExpr); ok {
+		if x, ok := ident.X.(*ast.Ident); ok && x.Name == "uuid" && ident.Sel.Name == "UUID" {
+			return FieldTypeUUID
+		}
+	}
+	// For other pointer types, they're comparable if the underlying type is comparable
+	return FieldTypeComparable
+}
+
+// handleSelectorType handles ast.SelectorExpr expressions (package.Type)
+func (g *DiffGenerator) handleSelectorType(t *ast.SelectorExpr) FieldType {
+	// Check for specific external package types
+	if x, ok := t.X.(*ast.Ident); ok {
+		switch x.Name {
+		case "time":
+			if t.Sel.Name == "Time" {
+				return FieldTypeTime
+			}
+		case "uuid":
+			if t.Sel.Name == "UUID" {
+				return FieldTypeUUID
+			}
+		case "gorm":
+			if t.Sel.Name == "DeletedAt" {
+				return FieldTypeGormDeletedAt
+			}
+		case "datatypes":
+			// GORM datatypes.JSON has []byte underlying type and supports direct comparison
+			if t.Sel.Name == "JSON" {
+				return FieldTypeJSON
+			}
+			// Other GORM datatypes might be comparable
+			return FieldTypeComparable
+		}
+	}
+	// For other external types, assume they're comparable unless proven otherwise
+	return FieldTypeComparable
 }
 
 // isJSONField checks if a field has gorm:"serializer:json" or gorm:"type:jsonb" tag
@@ -361,9 +444,9 @@ func (g *DiffGenerator) extractJSONTagName(fieldName, tagStr string) string {
 	return fieldName
 }
 
-// IdentifyJSONBStructs identifies which structs are annotated with @jsonb
+// computeFieldKeysAndIdentifyJSONB identifies which structs are annotated with @jsonb
 // and computes diff keys for all fields
-func (g *DiffGenerator) IdentifyJSONBStructs() {
+func (g *DiffGenerator) computeFieldKeysAndIdentifyJSONB() {
 	// First, mark structs that have @jsonb annotation
 	for _, structInfo := range g.Structs {
 		if structInfo.IsJSONB {
@@ -402,8 +485,8 @@ func (g *DiffGenerator) hasJSONFields() bool {
 func (g *DiffGenerator) GenerateCode() (string, error) {
 	var buf bytes.Buffer
 
-	// Identify which structs are used as JSONB columns
-	g.IdentifyJSONBStructs()
+	// Identify which structs are used as JSONB columns and compute field keys
+	g.computeFieldKeysAndIdentifyJSONB()
 
 	// Generate package declaration
 	if len(g.Structs) > 0 {
@@ -459,169 +542,8 @@ func (g *DiffGenerator) GenerateCode() (string, error) {
 	return string(formatted), nil
 }
 
-// Template for the diff function - now using pointer receiver
-const diffFunctionTmpl = `
-// Diff compares this {{.Name}} instance with another and returns a map of differences
-// with only the new values for fields that have changed.
-// Returns nil if either pointer is nil.
-func (a *{{.Name}}) Diff(b *{{.Name}}) map[string]interface{} {
-	// Handle nil pointers
-	if a == nil || b == nil {
-		return nil
-	}
-
-	diff := make(map[string]interface{})
-
-	{{range .Fields}}
-	// Compare {{.Name}}
-	{{if eq .FieldType 0}}
-	// Simple type comparison
-	if a.{{.Name}} != b.{{.Name}} {
-		diff["{{.DiffKey}}"] = b.{{.Name}}
-	}
-	{{else if eq .FieldType 1}}
-	// Struct type comparison - call Diff method directly
-	nestedDiff := a.{{.Name}}.Diff(&b.{{.Name}})
-	if len(nestedDiff) > 0 {
-		diff["{{.DiffKey}}"] = nestedDiff
-	}
-	{{else if eq .FieldType 2}}
-	// Pointer to struct comparison
-	if a.{{.Name}} == nil || b.{{.Name}} == nil {
-		if a.{{.Name}} != b.{{.Name}} {
-			diff["{{.DiffKey}}"] = b.{{.Name}}
-		}
-	} else {
-		nestedDiff := a.{{.Name}}.Diff(b.{{.Name}})
-		if len(nestedDiff) > 0 {
-			diff["{{.DiffKey}}"] = nestedDiff
-		}
-	}
-	{{else if eq .FieldType 6}}
-	// JSON field comparison - handle both datatypes.JSON and struct types with jsonb storage
-	{{if eq .Type "datatypes.JSON"}}
-	// Use bytes.Equal for datatypes.JSON ([]byte underlying type)
-	if !bytes.Equal([]byte(a.{{.Name}}), []byte(b.{{.Name}})) {
-		jsonValue, err := sonic.Marshal(b.{{.Name}})
-		if err == nil && !isEmptyJSON(string(jsonValue)) {
-			diff["{{.DiffKey}}"] = gorm.Expr("? || ?", clause.Column{Name: "{{getColumnName .Name .Tag}}"}, string(jsonValue))
-		} else if err != nil {
-			// Fallback to regular assignment if JSON marshaling fails
-			diff["{{.DiffKey}}"] = b.{{.Name}}
-		}
-		// Skip adding to diff if JSON is empty (no-op update)
-	}
-	{{else if or (hasPrefix .Type "JsonbStringSlice") (hasSuffix .Type "Slice")}}
-	// JSON field comparison - custom slice types with jsonb storage (not comparable with !=)
-	if !reflect.DeepEqual(a.{{.Name}}, b.{{.Name}}) {
-		jsonValue, err := sonic.Marshal(b.{{.Name}})
-		if err == nil && !isEmptyJSON(string(jsonValue)) {
-			diff["{{.DiffKey}}"] = gorm.Expr("? || ?", clause.Column{Name: "{{getColumnName .Name .Tag}}"}, string(jsonValue))
-		} else if err != nil {
-			// Fallback to regular assignment if JSON marshaling fails
-			diff["{{.DiffKey}}"] = b.{{.Name}}
-		}
-		// Skip adding to diff if JSON is empty (no-op update)
-	}
-	{{else}}
-	// JSON field comparison - attribute-by-attribute diff for struct types
-	{{if hasPrefix .Type "*"}}
-	// Handle pointer to struct
-	if a.{{.Name}} == nil && b.{{.Name}} != nil {
-		// a is nil, b is not nil - use entire b
-		jsonValue, err := sonic.Marshal(b.{{.Name}})
-		if err == nil && !isEmptyJSON(string(jsonValue)) {
-			diff["{{.DiffKey}}"] = gorm.Expr("? || ?", clause.Column{Name: "{{getColumnName .Name .Tag}}"}, string(jsonValue))
-		} else if err != nil {
-			diff["{{.DiffKey}}"] = b.{{.Name}}
-		}
-	} else if a.{{.Name}} != nil && b.{{.Name}} == nil {
-		// a is not nil, b is nil - set to null
-		diff["{{.DiffKey}}"] = nil
-	} else if a.{{.Name}} != nil && b.{{.Name}} != nil {
-		// Both are not nil - use attribute-by-attribute diff
-		{{.Name}}Diff := a.{{.Name}}.Diff(b.{{.Name}})
-		if len({{.Name}}Diff) > 0 {
-			jsonValue, err := sonic.Marshal({{.Name}}Diff)
-			if err == nil && !isEmptyJSON(string(jsonValue)) {
-				diff["{{.DiffKey}}"] = gorm.Expr("? || ?", clause.Column{Name: "{{getColumnName .Name .Tag}}"}, string(jsonValue))
-			} else if err != nil {
-				// Fallback to regular assignment if JSON marshaling fails
-				diff["{{.DiffKey}}"] = b.{{.Name}}
-			}
-		}
-	}
-	{{else}}
-	// Handle direct struct (not pointer) - use attribute-by-attribute diff
-	{{.Name}}Diff := a.{{.Name}}.Diff(&b.{{.Name}})
-	if len({{.Name}}Diff) > 0 {
-		jsonValue, err := sonic.Marshal({{.Name}}Diff)
-		if err == nil && !isEmptyJSON(string(jsonValue)) {
-			diff["{{.DiffKey}}"] = gorm.Expr("? || ?", clause.Column{Name: "{{getColumnName .Name .Tag}}"}, string(jsonValue))
-		} else if err != nil {
-			// Fallback to regular assignment if JSON marshaling fails
-			diff["{{.DiffKey}}"] = b.{{.Name}}
-		}
-	}
-	{{end}}
-	{{end}}
-	{{else if eq .FieldType 7}}
-	// Time comparison
-	{{if hasPrefix .Type "*"}}
-	// Pointer to time comparison
-	if (a.{{.Name}} == nil) != (b.{{.Name}} == nil) || (a.{{.Name}} != nil && !a.{{.Name}}.Equal(*b.{{.Name}})) {
-		diff["{{.DiffKey}}"] = b.{{.Name}}
-	}
-	{{else}}
-	// Direct time comparison
-	if !a.{{.Name}}.Equal(b.{{.Name}}) {
-		diff["{{.DiffKey}}"] = b.{{.Name}}
-
-	}
-	{{end}}
-	{{else if eq .FieldType 8}}
-	// UUID comparison
-	{{if hasPrefix .Type "*"}}
-	// Pointer to UUID comparison
-	if (a.{{.Name}} == nil) != (b.{{.Name}} == nil) || (a.{{.Name}} != nil && *a.{{.Name}} != *b.{{.Name}}) {
-		diff["{{.DiffKey}}"] = b.{{.Name}}
-	}
-	{{else}}
-	// Direct UUID comparison
-	if a.{{.Name}} != b.{{.Name}} {
-		diff["{{.DiffKey}}"] = b.{{.Name}}
-	}
-	{{end}}
-	{{else if eq .FieldType 9}}
-	// GORM DeletedAt comparison
-	if a.{{.Name}} != b.{{.Name}} {
-		diff["{{.DiffKey}}"] = b.{{.Name}}
-	}
-	{{else if eq .FieldType 10}}
-	// Comparable type comparison
-	if a.{{.Name}} != b.{{.Name}} {
-		diff["{{.DiffKey}}"] = b.{{.Name}}
-	}
-	{{else}}
-	// Complex type comparison (slice, map, interface, etc.)
-	if !reflect.DeepEqual(a.{{.Name}}, b.{{.Name}}) {
-		diff["{{.DiffKey}}"] = b.{{.Name}}
-	}
-	{{end}}
-	{{end}}
-
-	return diff
-}
-`
-
-// isEmptyJSON checks if a JSON string represents an empty object or array
-func isEmptyJSON(jsonStr string) bool {
-	trimmed := strings.TrimSpace(jsonStr)
-	return trimmed == "{}" || trimmed == "[]" || trimmed == "null"
-}
-
-// GenerateDiffFunction generates a diff function for a struct
-func (g *DiffGenerator) GenerateDiffFunction(structInfo StructInfo) (string, error) {
+// loadDiffTemplate loads the diff function template from embedded content
+func (g *DiffGenerator) loadDiffTemplate() (*template.Template, error) {
 	// Create template funcs
 	funcMap := template.FuncMap{
 		"trimStar": func(s string) string {
@@ -639,10 +561,27 @@ func (g *DiffGenerator) GenerateDiffFunction(structInfo StructInfo) (string, err
 		"isEmptyJSON": isEmptyJSON,
 	}
 
-	// Parse the template
-	tmpl, err := template.New("diff").Funcs(funcMap).Parse(diffFunctionTmpl)
+	// Parse the embedded template
+	tmpl, err := template.New("diff").Funcs(funcMap).Parse(diffFunctionTemplate)
 	if err != nil {
-		return "", fmt.Errorf("error parsing template: %v", err)
+		return nil, fmt.Errorf("error parsing embedded template: %v", err)
+	}
+
+	return tmpl, nil
+}
+
+// isEmptyJSON checks if a JSON string represents an empty object or array
+func isEmptyJSON(jsonStr string) bool {
+	trimmed := strings.TrimSpace(jsonStr)
+	return trimmed == "{}" || trimmed == "[]" || trimmed == "null"
+}
+
+// GenerateDiffFunction generates a diff function for a struct
+func (g *DiffGenerator) GenerateDiffFunction(structInfo StructInfo) (string, error) {
+	// Load template
+	tmpl, err := g.loadDiffTemplate()
+	if err != nil {
+		return "", err
 	}
 
 	var buf bytes.Buffer
@@ -684,20 +623,7 @@ func (g *DiffGenerator) ParseFiles(filePaths []string) error {
 		})
 
 		// Extract imports
-		for _, imp := range node.Imports {
-			importPath := strings.Trim(imp.Path.Value, "\"")
-			var importName string
-
-			if imp.Name != nil {
-				importName = imp.Name.Name
-			} else {
-				// Extract name from path
-				parts := strings.Split(importPath, "/")
-				importName = parts[len(parts)-1]
-			}
-
-			g.Imports[importPath] = importName
-		}
+		g.extractImports(node.Imports)
 	}
 
 	// Second pass: extract struct details now that we know all struct names

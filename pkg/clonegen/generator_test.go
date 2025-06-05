@@ -393,3 +393,44 @@ func TestCloneFunctionality(t *testing.T) {
 		}
 	})
 }
+
+func TestEmbeddedTemplates(t *testing.T) {
+	// Test that the embedded templates are not empty
+	if simpleCloneTemplate == "" {
+		t.Error("Simple clone template should not be empty")
+	}
+
+	if complexCloneTemplate == "" {
+		t.Error("Complex clone template should not be empty")
+	}
+
+	// Test that the templates contain expected content
+	if !strings.Contains(simpleCloneTemplate, "func (original *{{.Name}}) Clone()") {
+		t.Error("Simple template should contain the clone function signature")
+	}
+
+	if !strings.Contains(complexCloneTemplate, "func (original *{{.Name}}) Clone()") {
+		t.Error("Complex template should contain the clone function signature")
+	}
+
+	// Test that templates can be parsed
+	generator := New()
+
+	// Test simple template
+	simpleTmpl, err := generator.loadCloneTemplate(false)
+	if err != nil {
+		t.Fatalf("Should be able to parse simple embedded template: %v", err)
+	}
+	if simpleTmpl == nil {
+		t.Error("Parsed simple template should not be nil")
+	}
+
+	// Test complex template
+	complexTmpl, err := generator.loadCloneTemplate(true)
+	if err != nil {
+		t.Fatalf("Should be able to parse complex embedded template: %v", err)
+	}
+	if complexTmpl == nil {
+		t.Error("Parsed complex template should not be nil")
+	}
+}

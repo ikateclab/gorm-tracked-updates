@@ -1,0 +1,55 @@
+// Clone creates a deep copy of the {{.Name}} struct
+func (original *{{.Name}}) Clone() *{{.Name}} {
+	if original == nil {
+		return nil
+	}
+	// Create new instance and copy all simple fields
+	clone := *original
+
+	// Only handle the fields that need deep cloning
+	{{range .ComplexFields}}
+	{{if eq .FieldType.String "Struct"}}
+	clone.{{.Name}} = *(&original.{{.Name}}).Clone()
+	{{else if eq .FieldType.String "StructPtr"}}
+	if original.{{.Name}} != nil {
+		clone.{{.Name}} = original.{{.Name}}.Clone()
+	}
+	{{else if eq .FieldType.String "Slice"}}
+	if original.{{.Name}} != nil {
+		clone.{{.Name}} = make({{.Type}}, len(original.{{.Name}}))
+		{{if .Type | isSliceOfStructPtr}}
+		for i, item := range original.{{.Name}} {
+			if item != nil {
+				clone.{{.Name}}[i] = item.Clone()
+			}
+		}
+		{{else if .Type | isSliceOfStruct}}
+		for i, item := range original.{{.Name}} {
+			clone.{{.Name}}[i] = item.Clone()
+		}
+		{{else}}
+		copy(clone.{{.Name}}, original.{{.Name}})
+		{{end}}
+	}
+	{{else if eq .FieldType.String "Map"}}
+	if original.{{.Name}} != nil {
+		clone.{{.Name}} = make({{.Type}})
+		for k, v := range original.{{.Name}} {
+			{{if .Type | isMapOfStruct}}
+			clone.{{.Name}}[k] = v.Clone()
+			{{else if .Type | isMapOfStructPtr}}
+			if v != nil {
+				clone.{{.Name}}[k] = v.Clone()
+			}
+			{{else}}
+			clone.{{.Name}}[k] = v
+			{{end}}
+		}
+	}
+	{{else}}
+	// TODO: {{.Name}} ({{.Type}}) may need manual deep copy handling
+	{{end}}
+	{{end}}
+
+	return &clone
+}

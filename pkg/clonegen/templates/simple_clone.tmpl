@@ -1,0 +1,9 @@
+// Clone creates a deep copy of the {{.Name}} struct
+func (original *{{.Name}}) Clone() *{{.Name}} {
+	if original == nil {
+		return nil
+	}
+	// Create new instance - all fields are simple types
+	clone := *original
+	return &clone
+}
