@@ -32,9 +32,7 @@ func (original *Account) Clone() *Account {
 	// Create new instance and copy all simple fields
 	clone := *original
 
-	// Only handle the fields that need deep cloning
-
-	// TODO: Id (uuid.UUID) may need manual deep copy handling
+	// Only handle JSONB fields that need deep cloning
 
 	if original.Settings != nil {
 		clone.Settings = original.Settings.Clone()
@@ -42,19 +40,6 @@ func (original *Account) Clone() *Account {
 
 	if original.Data != nil {
 		clone.Data = original.Data.Clone()
-	}
-
-	// TODO: DeletedAt (gorm.DeletedAt) may need manual deep copy handling
-
-	if original.Services != nil {
-		clone.Services = make([]*Service, len(original.Services))
-
-		for i, item := range original.Services {
-			if item != nil {
-				clone.Services[i] = item.Clone()
-			}
-		}
-
 	}
 
 	return &clone
@@ -68,22 +53,12 @@ func (original *ServerPod) Clone() *ServerPod {
 	// Create new instance and copy all simple fields
 	clone := *original
 
-	// Only handle the fields that need deep cloning
-
-	// TODO: Id (uuid.UUID) may need manual deep copy handling
+	// Only handle JSONB fields that need deep cloning
 
 	if original.Settings != nil {
 		clone.Settings = make(datatypes.JSON, len(original.Settings))
-
 		copy(clone.Settings, original.Settings)
-
 	}
-
-	// TODO: DeletedAt (gorm.DeletedAt) may need manual deep copy handling
-
-	// TODO: ServerPodTypeId (uuid.UUID) may need manual deep copy handling
-
-	clone.ServerPodType = *(&original.ServerPodType).Clone()
 
 	return &clone
 }
@@ -106,9 +81,7 @@ func (original *ServerPodType) Clone() *ServerPodType {
 	// Create new instance and copy all simple fields
 	clone := *original
 
-	// Only handle the fields that need deep cloning
-
-	// TODO: Id (uuid.UUID) may need manual deep copy handling
+	// Only handle JSONB fields that need deep cloning
 
 	if original.Version != nil {
 		clone.Version = original.Version.Clone()
@@ -117,8 +90,6 @@ func (original *ServerPodType) Clone() *ServerPodType {
 	// TODO: AccountIdWhitelist (JsonbStringSlice) may need manual deep copy handling
 
 	// TODO: ServiceIdWhitelist (JsonbStringSlice) may need manual deep copy handling
-
-	// TODO: DeletedAt (gorm.DeletedAt) may need manual deep copy handling
 
 	return &clone
 }
@@ -141,7 +112,7 @@ func (original *ServiceData) Clone() *ServiceData {
 	// Create new instance and copy all simple fields
 	clone := *original
 
-	// Only handle the fields that need deep cloning
+	// Only handle JSONB fields that need deep cloning
 
 	clone.Status = *(&original.Status).Clone()
 
@@ -166,9 +137,7 @@ func (original *Service) Clone() *Service {
 	// Create new instance and copy all simple fields
 	clone := *original
 
-	// Only handle the fields that need deep cloning
-
-	// TODO: Id (uuid.UUID) may need manual deep copy handling
+	// Only handle JSONB fields that need deep cloning
 
 	if original.Data != nil {
 		clone.Data = original.Data.Clone()
@@ -176,20 +145,6 @@ func (original *Service) Clone() *Service {
 
 	if original.Settings != nil {
 		clone.Settings = original.Settings.Clone()
-	}
-
-	// TODO: DeletedAt (gorm.DeletedAt) may need manual deep copy handling
-
-	// TODO: AccountId (uuid.UUID) may need manual deep copy handling
-
-	// TODO: ServerPodId (*uuid.UUID) may need manual deep copy handling
-
-	if original.Account != nil {
-		clone.Account = original.Account.Clone()
-	}
-
-	if original.ServerPod != nil {
-		clone.ServerPod = original.ServerPod.Clone()
 	}
 
 	return &clone

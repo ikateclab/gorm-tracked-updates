@@ -13,11 +13,13 @@ Both generators are designed to work together for optimal GORM workflows: clone 
 
 ## Recent Updates
 
-**🚀 Performance & JSON Enhancements:**
+**🚀 Performance & Architecture Enhancements:**
+- **Template-Based Architecture**: Migrated to template-based code generation for better maintainability and consistency
 - **Sonic Integration**: Migrated to `github.com/bytedance/sonic` for JSON operations (3.9x faster unmarshal)
 - **Smart Type Detection**: Enhanced detection for custom slice types and JSON fields
 - **GORM Expression Optimization**: Automatic JSON field merging with proper GORM expressions
 - **Performance Improvements**: Updated benchmarks show 3.5x faster cloning vs reflection
+- **Enhanced Testing**: Comprehensive test coverage for template-based generation
 
 ## Project Structure
 
@@ -30,10 +32,15 @@ gorm-tracked-updates/
 ├── pkg/
 │   ├── diffgen/
 │   │   ├── generator.go           # Diff generator implementation
-│   │   └── generator_test.go      # Diff generator tests
+│   │   ├── generator_test.go      # Diff generator tests
+│   │   └── templates/
+│   │       └── diff_function.tmpl # Diff function template
 │   └── clonegen/
 │       ├── generator.go           # Clone generator implementation
-│       └── generator_test.go      # Clone generator tests
+│       ├── generator_test.go      # Clone generator tests
+│       └── templates/
+│           ├── simple_clone.tmpl  # Simple clone template
+│           └── complex_clone.tmpl # Complex clone template
 ├── examples/
 │   ├── structs/                   # Shared struct definitions
 │   ├── diff-demo/                 # Diff generator demo
@@ -317,12 +324,18 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ## Architecture
 
-Both generators follow the same architectural pattern:
+Both generators follow a modern template-based architectural pattern:
 
 1. **AST Parsing**: Parse Go source files to extract struct definitions
 2. **Type Analysis**: Categorize field types for optimal handling
-3. **Code Generation**: Template-based code generation
+3. **Template-Based Generation**: Use embedded templates for consistent code generation
 4. **Optimization**: Type-specific optimizations for performance
+
+### Template-Based Architecture Benefits:
+- **Maintainability**: Separation of logic and code generation templates
+- **Consistency**: Uniform code output across all generated methods
+- **Extensibility**: Easy to modify templates for new features
+- **Testing**: Comprehensive test coverage for template-based generation
 
 This ensures consistency, maintainability, and extensibility across both generators.
 

@@ -276,6 +276,13 @@ func (g *DiffGenerator) determineFieldType(expr ast.Expr, typeStr string, tagStr
 		return FieldTypeJSON
 	}
 
+	// Check if this is a nested JSONB struct (struct marked with @jsonb annotation)
+	baseType := strings.TrimPrefix(typeStr, "*")
+	if g.JSONBStructs[baseType] {
+		// This is a nested JSONB struct, treat as JSON for proper handling
+		return FieldTypeJSON
+	}
+
 	// Check for specific known types by string representation
 	if fieldType := g.determineKnownTypeByString(typeStr); fieldType != FieldTypeComplex {
 		return fieldType
@@ -306,24 +313,20 @@ func (g *DiffGenerator) determineFieldTypeByAST(expr ast.Expr) FieldType {
 
 // handleIdentType handles ast.Ident expressions
 func (g *DiffGenerator) handleIdentType(t *ast.Ident) FieldType {
-	// Check if it's a known struct
-	if g.KnownStructs[t.Name] {
-		return FieldTypeStruct
-	}
 	// Check for common patterns that indicate slice types (but not JsonbStringSlice with JSON tags)
 	if strings.Contains(strings.ToLower(t.Name), "slice") {
 		return FieldTypeComplex
 	}
-	// Otherwise it's a simple type
+	// For known structs, treat as complex to use reflect.DeepEqual (safer for non-comparable structs)
+	// Only JSONB fields should be handled specially through field tags
+	if g.KnownStructs[t.Name] {
+		return FieldTypeComplex
+	}
 	return FieldTypeSimple
 }
 
 // handlePointerType handles ast.StarExpr expressions (pointer types)
 func (g *DiffGenerator) handlePointerType(t *ast.StarExpr) FieldType {
-	// Check if it's a pointer to a known struct
-	if ident, ok := t.X.(*ast.Ident); ok && g.KnownStructs[ident.Name] {
-		return FieldTypeStructPtr
-	}
 	// Check for pointer to time.Time
 	if ident, ok := t.X.(*ast.SelectorExpr); ok {
 		if x, ok := ident.X.(*ast.Ident); ok && x.Name == "time" && ident.Sel.Name == "Time" {
@@ -336,7 +339,8 @@ func (g *DiffGenerator) handlePointerType(t *ast.StarExpr) FieldType {
 			return FieldTypeUUID
 		}
 	}
-	// For other pointer types, they're comparable if the underlying type is comparable
+	// For pointer to known structs, treat as comparable to avoid relationship handling
+	// Only JSONB fields should be handled specially through field tags
 	return FieldTypeComparable
 }
 
@@ -454,10 +458,19 @@ func (g *DiffGenerator) computeFieldKeysAndIdentifyJSONB() {
 		}
 	}
 
-	// Second, compute diff keys for all fields now that we know which structs are JSONB
+	// Second, re-process field types now that we know which structs are JSONB
 	for i := range g.Structs {
 		for j := range g.Structs[i].Fields {
 			field := &g.Structs[i].Fields[j]
+
+			// Re-determine field type considering JSONB structs
+			baseType := strings.TrimPrefix(field.Type, "*")
+			if g.JSONBStructs[baseType] && !g.isJSONField(field.Tag) {
+				// This is a nested JSONB struct, treat as JSON for proper handling
+				field.FieldType = FieldTypeJSON
+			}
+
+			// Compute diff keys
 			if g.JSONBStructs[g.Structs[i].Name] {
 				// For JSONB structs, use JSON tag names
 				field.DiffKey = g.extractJSONTagName(field.Name, field.Tag)

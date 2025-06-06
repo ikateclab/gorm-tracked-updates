@@ -28,6 +28,7 @@ type StructField struct {
 	Name      string
 	Type      string
 	FieldType FieldType
+	Tag       string
 }
 
 // FieldType categorizes the field type for clone generation
@@ -71,6 +72,7 @@ type StructInfo struct {
 	Fields     []StructField
 	ImportPath string
 	Package    string
+	IsJSONB    bool
 }
 
 // HasComplexFields returns true if the struct has any fields that need deep cloning
@@ -155,21 +157,29 @@ func (g *CloneGenerator) collectStructNames(node *ast.File) {
 
 // extractStructDetails extracts detailed struct information from AST
 func (g *CloneGenerator) extractStructDetails(node *ast.File, packageName string) error {
-	ast.Inspect(node, func(n ast.Node) bool {
-		if typeSpec, ok := n.(*ast.TypeSpec); ok {
-			if structType, isStruct := typeSpec.Type.(*ast.StructType); isStruct {
-				structInfo := StructInfo{
-					Name:    typeSpec.Name.Name,
-					Package: packageName,
-				}
+	for _, decl := range node.Decls {
+		if genDecl, ok := decl.(*ast.GenDecl); ok && genDecl.Tok == token.TYPE {
+			for _, spec := range genDecl.Specs {
+				if typeSpec, ok := spec.(*ast.TypeSpec); ok {
+					if structType, ok := typeSpec.Type.(*ast.StructType); ok {
+						// Extract fields from struct
+						fields := g.extractFields(structType)
 
-				// Extract fields
-				structInfo.Fields = g.extractFields(structType)
-				g.Structs = append(g.Structs, structInfo)
+						// Check for @jsonb annotation in comments
+						isJSONB := g.hasJSONBAnnotation(genDecl.Doc)
+
+						// Add to structs list
+						g.Structs = append(g.Structs, StructInfo{
+							Name:    typeSpec.Name.Name,
+							Fields:  fields,
+							Package: packageName,
+							IsJSONB: isJSONB,
+						})
+					}
+				}
 			}
 		}
-		return true
-	})
+	}
 
 	return nil
 }
@@ -180,7 +190,14 @@ func (g *CloneGenerator) extractFields(structType *ast.StructType) []StructField
 
 	for _, field := range structType.Fields.List {
 		fieldType := g.getTypeString(field.Type)
-		fieldTypeCategory := g.categorizeFieldType(fieldType)
+
+		// Get field tag if present
+		var tagStr string
+		if field.Tag != nil {
+			tagStr = field.Tag.Value
+		}
+
+		fieldTypeCategory := g.categorizeFieldTypeWithTag(fieldType, tagStr)
 
 		// Handle multiple field names (e.g., a, b int)
 		if len(field.Names) > 0 {
@@ -189,6 +206,7 @@ func (g *CloneGenerator) extractFields(structType *ast.StructType) []StructField
 					Name:      name.Name,
 					Type:      fieldType,
 					FieldType: fieldTypeCategory,
+					Tag:       tagStr,
 				})
 			}
 		} else {
@@ -197,6 +215,7 @@ func (g *CloneGenerator) extractFields(structType *ast.StructType) []StructField
 				Name:      fieldType,
 				Type:      fieldType,
 				FieldType: fieldTypeCategory,
+				Tag:       tagStr,
 			})
 		}
 	}
@@ -252,15 +271,7 @@ func (g *CloneGenerator) categorizeFieldType(fieldType string) FieldType {
 	// Remove pointer prefix for analysis
 	baseType := strings.TrimPrefix(fieldType, "*")
 
-	// Check if it's a known struct
-	if g.KnownStructs[baseType] {
-		if strings.HasPrefix(fieldType, "*") {
-			return FieldTypeStructPtr
-		}
-		return FieldTypeStruct
-	}
-
-	// Check for built-in types
+	// Check for built-in types first
 	switch {
 	case strings.HasPrefix(fieldType, "[]"):
 		return FieldTypeSlice
@@ -273,7 +284,120 @@ func (g *CloneGenerator) categorizeFieldType(fieldType string) FieldType {
 	case isSimpleType(baseType):
 		return FieldTypeSimple
 	default:
-		return FieldTypeComplex
+		// For unknown types (including structs), treat as simple to avoid relationship handling
+		// Only JSONB fields should be handled specially through field tags
+		return FieldTypeSimple
+	}
+}
+
+// categorizeFieldTypeWithTag determines the category of a field type considering GORM tags
+func (g *CloneGenerator) categorizeFieldTypeWithTag(fieldType, tagStr string) FieldType {
+	// Check if this is a relationship field (has foreignKey tag)
+	if g.isRelationshipField(tagStr) {
+		// Relationship fields should be treated as simple to avoid cloning
+		return FieldTypeSimple
+	}
+
+	// Check if this is a JSONB field based on GORM tags
+	if g.isJSONBField(tagStr) {
+		// Remove pointer prefix for analysis
+		baseType := strings.TrimPrefix(fieldType, "*")
+
+		// Check if it's a known struct that should be treated as JSONB
+		if g.KnownStructs[baseType] {
+			if strings.HasPrefix(fieldType, "*") {
+				return FieldTypeStructPtr
+			}
+			return FieldTypeStruct
+		}
+
+		// Handle custom JSONB types like JsonbStringSlice
+		if !isSimpleType(baseType) && baseType != "json.RawMessage" && baseType != "datatypes.JSON" {
+			return FieldTypeComplex
+		}
+	}
+
+	// Fall back to regular categorization
+	return g.categorizeFieldType(fieldType)
+}
+
+// isJSONBField checks if a field has JSONB-related GORM tags
+func (g *CloneGenerator) isJSONBField(tagStr string) bool {
+	if tagStr == "" {
+		return false
+	}
+
+	// Remove backticks from tag string
+	tagStr = strings.Trim(tagStr, "`")
+
+	// Check for GORM JSONB indicators
+	return strings.Contains(tagStr, "type:jsonb") || strings.Contains(tagStr, "serializer:json")
+}
+
+// isRelationshipField checks if a field has relationship-related GORM tags
+func (g *CloneGenerator) isRelationshipField(tagStr string) bool {
+	if tagStr == "" {
+		return false
+	}
+
+	// Remove backticks from tag string
+	tagStr = strings.Trim(tagStr, "`")
+
+	// Check for GORM relationship indicators
+	return strings.Contains(tagStr, "foreignKey:") ||
+		   strings.Contains(tagStr, "references:") ||
+		   strings.Contains(tagStr, "many2many:") ||
+		   strings.Contains(tagStr, "polymorphic:")
+}
+
+// hasJSONBAnnotation checks if a struct has @jsonb annotation in its comments
+func (g *CloneGenerator) hasJSONBAnnotation(commentGroup *ast.CommentGroup) bool {
+	if commentGroup == nil {
+		return false
+	}
+
+	for _, comment := range commentGroup.List {
+		if strings.Contains(comment.Text, "@jsonb") {
+			return true
+		}
+	}
+	return false
+}
+
+// identifyJSONBStructsAndReprocessFields identifies JSONB structs and re-processes field types
+func (g *CloneGenerator) identifyJSONBStructsAndReprocessFields() {
+	// Create a map to track JSONB structs
+	jsonbStructs := make(map[string]bool)
+
+	// First, identify structs with @jsonb annotation
+	for _, structInfo := range g.Structs {
+		if structInfo.IsJSONB {
+			jsonbStructs[structInfo.Name] = true
+		}
+	}
+
+	// Second, re-process field types now that we know which structs are JSONB
+	for i := range g.Structs {
+		for j := range g.Structs[i].Fields {
+			field := &g.Structs[i].Fields[j]
+
+			// Skip relationship fields - treat as simple
+			if g.isRelationshipField(field.Tag) {
+				field.FieldType = FieldTypeSimple
+				continue
+			}
+
+			// Re-determine field type considering JSONB structs
+			baseType := strings.TrimPrefix(field.Type, "*")
+			if jsonbStructs[baseType] && !g.isJSONBField(field.Tag) {
+				// This is a nested JSONB struct, treat appropriately for cloning
+				if strings.HasPrefix(field.Type, "*") {
+					field.FieldType = FieldTypeStructPtr
+				} else {
+					field.FieldType = FieldTypeStruct
+				}
+			}
+		}
 	}
 }
 
@@ -328,6 +452,9 @@ func (g *CloneGenerator) getRequiredImports() []string {
 // GenerateCode generates the code for all struct clone methods
 func (g *CloneGenerator) GenerateCode() (string, error) {
 	var buf bytes.Buffer
+
+	// Identify JSONB structs and re-process field types
+	g.identifyJSONBStructsAndReprocessFields()
 
 	// Generate package declaration
 	if len(g.Structs) > 0 {

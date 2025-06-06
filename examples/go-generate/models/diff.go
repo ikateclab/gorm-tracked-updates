@@ -297,10 +297,9 @@ func (a *ServerPod) Diff(b *ServerPod) map[string]interface{} {
 
 	// Compare ServerPodType
 
-	// Struct type comparison - call Diff method directly
-	nestedDiff := a.ServerPodType.Diff(&b.ServerPodType)
-	if len(nestedDiff) > 0 {
-		diff["ServerPodType"] = nestedDiff
+	// Complex type comparison (slice, map, interface, etc.)
+	if !reflect.DeepEqual(a.ServerPodType, b.ServerPodType) {
+		diff["ServerPodType"] = b.ServerPodType
 	}
 
 	return diff
@@ -717,10 +716,20 @@ func (a *ServiceData) Diff(b *ServiceData) map[string]interface{} {
 
 	// Compare Status
 
-	// Struct type comparison - call Diff method directly
-	nestedDiff := a.Status.Diff(&b.Status)
-	if len(nestedDiff) > 0 {
-		diff["status"] = nestedDiff
+	// JSON field comparison - handle both datatypes.JSON and struct types with jsonb storage
+
+	// JSON field comparison - attribute-by-attribute diff for struct types
+
+	// Handle direct struct (not pointer) - use attribute-by-attribute diff
+	StatusDiff := a.Status.Diff(&b.Status)
+	if len(StatusDiff) > 0 {
+		jsonValue, err := sonic.Marshal(StatusDiff)
+		if err == nil && !isEmptyJSON(string(jsonValue)) {
+			diff["status"] = gorm.Expr("? || ?", clause.Column{Name: "status"}, string(jsonValue))
+		} else if err != nil {
+			// Fallback to regular assignment if JSON marshaling fails
+			diff["status"] = b.Status
+		}
 	}
 
 	// Compare StatusTimestamp
@@ -908,30 +917,16 @@ func (a *Service) Diff(b *Service) map[string]interface{} {
 
 	// Compare Account
 
-	// Pointer to struct comparison
-	if a.Account == nil || b.Account == nil {
-		if a.Account != b.Account {
-			diff["Account"] = b.Account
-		}
-	} else {
-		nestedDiff := a.Account.Diff(b.Account)
-		if len(nestedDiff) > 0 {
-			diff["Account"] = nestedDiff
-		}
+	// Comparable type comparison
+	if a.Account != b.Account {
+		diff["Account"] = b.Account
 	}
 
 	// Compare ServerPod
 
-	// Pointer to struct comparison
-	if a.ServerPod == nil || b.ServerPod == nil {
-		if a.ServerPod != b.ServerPod {
-			diff["ServerPod"] = b.ServerPod
-		}
-	} else {
-		nestedDiff := a.ServerPod.Diff(b.ServerPod)
-		if len(nestedDiff) > 0 {
-			diff["ServerPod"] = nestedDiff
-		}
+	// Comparable type comparison
+	if a.ServerPod != b.ServerPod {
+		diff["ServerPod"] = b.ServerPod
 	}
 
 	return diff
