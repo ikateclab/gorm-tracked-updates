@@ -1,9 +1,10 @@
-// Diff compares this {{.Name}} instance with another and returns a map of differences
+// Diff compares this {{.Name}} instance (new) with another (old) and returns a map of differences
 // with only the new values for fields that have changed.
+// Usage: newValues = new.Diff(old)
 // Returns nil if either pointer is nil.
-func (a *{{.Name}}) Diff(b *{{.Name}}) map[string]interface{} {
+func (new *{{.Name}}) Diff(old *{{.Name}}) map[string]interface{} {
 	// Handle nil pointers
-	if a == nil || b == nil {
+	if new == nil || old == nil {
 		return nil
 	}
 
@@ -13,23 +14,23 @@ func (a *{{.Name}}) Diff(b *{{.Name}}) map[string]interface{} {
 	// Compare {{.Name}}
 	{{if eq .FieldType.String "Simple"}}
 	// Simple type comparison
-	if a.{{.Name}} != b.{{.Name}} {
-		diff["{{.DiffKey}}"] = b.{{.Name}}
+	if new.{{.Name}} != old.{{.Name}} {
+		diff["{{.DiffKey}}"] = new.{{.Name}}
 	}
 	{{else if eq .FieldType.String "Struct"}}
 	// Struct type comparison - call Diff method directly
-	nestedDiff := a.{{.Name}}.Diff(&b.{{.Name}})
+	nestedDiff := new.{{.Name}}.Diff(&old.{{.Name}})
 	if len(nestedDiff) > 0 {
 		diff["{{.DiffKey}}"] = nestedDiff
 	}
 	{{else if eq .FieldType.String "StructPtr"}}
 	// Pointer to struct comparison
-	if a.{{.Name}} == nil || b.{{.Name}} == nil {
-		if a.{{.Name}} != b.{{.Name}} {
-			diff["{{.DiffKey}}"] = b.{{.Name}}
+	if new.{{.Name}} == nil || old.{{.Name}} == nil {
+		if new.{{.Name}} != old.{{.Name}} {
+			diff["{{.DiffKey}}"] = new.{{.Name}}
 		}
 	} else {
-		nestedDiff := a.{{.Name}}.Diff(b.{{.Name}})
+		nestedDiff := new.{{.Name}}.Diff(old.{{.Name}})
 		if len(nestedDiff) > 0 {
 			diff["{{.DiffKey}}"] = nestedDiff
 		}
@@ -38,25 +39,25 @@ func (a *{{.Name}}) Diff(b *{{.Name}}) map[string]interface{} {
 	// JSON field comparison - handle both datatypes.JSON and struct types with jsonb storage
 	{{if eq .Type "datatypes.JSON"}}
 	// Use bytes.Equal for datatypes.JSON ([]byte underlying type)
-	if !bytes.Equal([]byte(a.{{.Name}}), []byte(b.{{.Name}})) {
-		jsonValue, err := sonic.Marshal(b.{{.Name}})
+	if !bytes.Equal([]byte(new.{{.Name}}), []byte(old.{{.Name}})) {
+		jsonValue, err := sonic.Marshal(new.{{.Name}})
 		if err == nil && !isEmptyJSON(string(jsonValue)) {
 			diff["{{.DiffKey}}"] = gorm.Expr("? || ?", clause.Column{Name: "{{getColumnName .Name .Tag}}"}, string(jsonValue))
 		} else if err != nil {
 			// Fallback to regular assignment if JSON marshaling fails
-			diff["{{.DiffKey}}"] = b.{{.Name}}
+			diff["{{.DiffKey}}"] = new.{{.Name}}
 		}
 		// Skip adding to diff if JSON is empty (no-op update)
 	}
 	{{else if or (hasPrefix .Type "JsonbStringSlice") (hasSuffix .Type "Slice")}}
 	// JSON field comparison - custom slice types with jsonb storage (not comparable with !=)
-	if !reflect.DeepEqual(a.{{.Name}}, b.{{.Name}}) {
-		jsonValue, err := sonic.Marshal(b.{{.Name}})
+	if !reflect.DeepEqual(new.{{.Name}}, old.{{.Name}}) {
+		jsonValue, err := sonic.Marshal(new.{{.Name}})
 		if err == nil && !isEmptyJSON(string(jsonValue)) {
 			diff["{{.DiffKey}}"] = gorm.Expr("? || ?", clause.Column{Name: "{{getColumnName .Name .Tag}}"}, string(jsonValue))
 		} else if err != nil {
 			// Fallback to regular assignment if JSON marshaling fails
-			diff["{{.DiffKey}}"] = b.{{.Name}}
+			diff["{{.DiffKey}}"] = new.{{.Name}}
 		}
 		// Skip adding to diff if JSON is empty (no-op update)
 	}
@@ -64,40 +65,40 @@ func (a *{{.Name}}) Diff(b *{{.Name}}) map[string]interface{} {
 	// JSON field comparison - attribute-by-attribute diff for struct types
 	{{if hasPrefix .Type "*"}}
 	// Handle pointer to struct
-	if a.{{.Name}} == nil && b.{{.Name}} != nil {
-		// a is nil, b is not nil - use entire b
-		jsonValue, err := sonic.Marshal(b.{{.Name}})
+	if new.{{.Name}} == nil && old.{{.Name}} != nil {
+		// new is nil, old is not nil - set to null
+		diff["{{.DiffKey}}"] = nil
+	} else if new.{{.Name}} != nil && old.{{.Name}} == nil {
+		// new is not nil, old is nil - use entire new
+		jsonValue, err := sonic.Marshal(new.{{.Name}})
 		if err == nil && !isEmptyJSON(string(jsonValue)) {
 			diff["{{.DiffKey}}"] = gorm.Expr("? || ?", clause.Column{Name: "{{getColumnName .Name .Tag}}"}, string(jsonValue))
 		} else if err != nil {
-			diff["{{.DiffKey}}"] = b.{{.Name}}
+			diff["{{.DiffKey}}"] = new.{{.Name}}
 		}
-	} else if a.{{.Name}} != nil && b.{{.Name}} == nil {
-		// a is not nil, b is nil - set to null
-		diff["{{.DiffKey}}"] = nil
-	} else if a.{{.Name}} != nil && b.{{.Name}} != nil {
+	} else if new.{{.Name}} != nil && old.{{.Name}} != nil {
 		// Both are not nil - use attribute-by-attribute diff
-		{{.Name}}Diff := a.{{.Name}}.Diff(b.{{.Name}})
+		{{.Name}}Diff := new.{{.Name}}.Diff(old.{{.Name}})
 		if len({{.Name}}Diff) > 0 {
 			jsonValue, err := sonic.Marshal({{.Name}}Diff)
 			if err == nil && !isEmptyJSON(string(jsonValue)) {
 				diff["{{.DiffKey}}"] = gorm.Expr("? || ?", clause.Column{Name: "{{getColumnName .Name .Tag}}"}, string(jsonValue))
 			} else if err != nil {
 				// Fallback to regular assignment if JSON marshaling fails
-				diff["{{.DiffKey}}"] = b.{{.Name}}
+				diff["{{.DiffKey}}"] = new.{{.Name}}
 			}
 		}
 	}
 	{{else}}
 	// Handle direct struct (not pointer) - use attribute-by-attribute diff
-	{{.Name}}Diff := a.{{.Name}}.Diff(&b.{{.Name}})
+	{{.Name}}Diff := new.{{.Name}}.Diff(&old.{{.Name}})
 	if len({{.Name}}Diff) > 0 {
 		jsonValue, err := sonic.Marshal({{.Name}}Diff)
 		if err == nil && !isEmptyJSON(string(jsonValue)) {
 			diff["{{.DiffKey}}"] = gorm.Expr("? || ?", clause.Column{Name: "{{getColumnName .Name .Tag}}"}, string(jsonValue))
 		} else if err != nil {
 			// Fallback to regular assignment if JSON marshaling fails
-			diff["{{.DiffKey}}"] = b.{{.Name}}
+			diff["{{.DiffKey}}"] = new.{{.Name}}
 		}
 	}
 	{{end}}
@@ -106,13 +107,13 @@ func (a *{{.Name}}) Diff(b *{{.Name}}) map[string]interface{} {
 	// Time comparison
 	{{if hasPrefix .Type "*"}}
 	// Pointer to time comparison
-	if (a.{{.Name}} == nil) != (b.{{.Name}} == nil) || (a.{{.Name}} != nil && !a.{{.Name}}.Equal(*b.{{.Name}})) {
-		diff["{{.DiffKey}}"] = b.{{.Name}}
+	if (new.{{.Name}} == nil) != (old.{{.Name}} == nil) || (new.{{.Name}} != nil && !new.{{.Name}}.Equal(*old.{{.Name}})) {
+		diff["{{.DiffKey}}"] = new.{{.Name}}
 	}
 	{{else}}
 	// Direct time comparison
-	if !a.{{.Name}}.Equal(b.{{.Name}}) {
-		diff["{{.DiffKey}}"] = b.{{.Name}}
+	if !new.{{.Name}}.Equal(old.{{.Name}}) {
+		diff["{{.DiffKey}}"] = new.{{.Name}}
 
 	}
 	{{end}}
@@ -120,29 +121,29 @@ func (a *{{.Name}}) Diff(b *{{.Name}}) map[string]interface{} {
 	// UUID comparison
 	{{if hasPrefix .Type "*"}}
 	// Pointer to UUID comparison
-	if (a.{{.Name}} == nil) != (b.{{.Name}} == nil) || (a.{{.Name}} != nil && *a.{{.Name}} != *b.{{.Name}}) {
-		diff["{{.DiffKey}}"] = b.{{.Name}}
+	if (new.{{.Name}} == nil) != (old.{{.Name}} == nil) || (new.{{.Name}} != nil && *new.{{.Name}} != *old.{{.Name}}) {
+		diff["{{.DiffKey}}"] = new.{{.Name}}
 	}
 	{{else}}
 	// Direct UUID comparison
-	if a.{{.Name}} != b.{{.Name}} {
-		diff["{{.DiffKey}}"] = b.{{.Name}}
+	if new.{{.Name}} != old.{{.Name}} {
+		diff["{{.DiffKey}}"] = new.{{.Name}}
 	}
 	{{end}}
 	{{else if eq .FieldType.String "GormDeletedAt"}}
 	// GORM DeletedAt comparison
-	if a.{{.Name}} != b.{{.Name}} {
-		diff["{{.DiffKey}}"] = b.{{.Name}}
+	if new.{{.Name}} != old.{{.Name}} {
+		diff["{{.DiffKey}}"] = new.{{.Name}}
 	}
 	{{else if eq .FieldType.String "Comparable"}}
 	// Comparable type comparison
-	if a.{{.Name}} != b.{{.Name}} {
-		diff["{{.DiffKey}}"] = b.{{.Name}}
+	if new.{{.Name}} != old.{{.Name}} {
+		diff["{{.DiffKey}}"] = new.{{.Name}}
 	}
 	{{else}}
 	// Complex type comparison (slice, map, interface, etc.)
-	if !reflect.DeepEqual(a.{{.Name}}, b.{{.Name}}) {
-		diff["{{.DiffKey}}"] = b.{{.Name}}
+	if !reflect.DeepEqual(new.{{.Name}}, old.{{.Name}}) {
+		diff["{{.DiffKey}}"] = new.{{.Name}}
 	}
 	{{end}}
 	{{end}}

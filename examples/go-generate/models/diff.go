@@ -15,12 +15,13 @@ func isEmptyJSON(jsonStr string) bool {
 	return trimmed == "{}" || trimmed == "[]" || trimmed == "null"
 }
 
-// Diff compares this AccountSettings instance with another and returns a map of differences
+// Diff compares this AccountSettings instance (new) with another (old) and returns a map of differences
 // with only the new values for fields that have changed.
+// Usage: newValues = new.Diff(old)
 // Returns nil if either pointer is nil.
-func (a *AccountSettings) Diff(b *AccountSettings) map[string]interface{} {
+func (new *AccountSettings) Diff(old *AccountSettings) map[string]interface{} {
 	// Handle nil pointers
-	if a == nil || b == nil {
+	if new == nil || old == nil {
 		return nil
 	}
 
@@ -29,12 +30,13 @@ func (a *AccountSettings) Diff(b *AccountSettings) map[string]interface{} {
 	return diff
 }
 
-// Diff compares this AccountData instance with another and returns a map of differences
+// Diff compares this AccountData instance (new) with another (old) and returns a map of differences
 // with only the new values for fields that have changed.
+// Usage: newValues = new.Diff(old)
 // Returns nil if either pointer is nil.
-func (a *AccountData) Diff(b *AccountData) map[string]interface{} {
+func (new *AccountData) Diff(old *AccountData) map[string]interface{} {
 	// Handle nil pointers
-	if a == nil || b == nil {
+	if new == nil || old == nil {
 		return nil
 	}
 
@@ -43,12 +45,13 @@ func (a *AccountData) Diff(b *AccountData) map[string]interface{} {
 	return diff
 }
 
-// Diff compares this Account instance with another and returns a map of differences
+// Diff compares this Account instance (new) with another (old) and returns a map of differences
 // with only the new values for fields that have changed.
+// Usage: newValues = new.Diff(old)
 // Returns nil if either pointer is nil.
-func (a *Account) Diff(b *Account) map[string]interface{} {
+func (new *Account) Diff(old *Account) map[string]interface{} {
 	// Handle nil pointers
-	if a == nil || b == nil {
+	if new == nil || old == nil {
 		return nil
 	}
 
@@ -59,15 +62,15 @@ func (a *Account) Diff(b *Account) map[string]interface{} {
 	// UUID comparison
 
 	// Direct UUID comparison
-	if a.Id != b.Id {
-		diff["Id"] = b.Id
+	if new.Id != old.Id {
+		diff["Id"] = new.Id
 	}
 
 	// Compare Name
 
 	// Simple type comparison
-	if a.Name != b.Name {
-		diff["Name"] = b.Name
+	if new.Name != old.Name {
+		diff["Name"] = new.Name
 	}
 
 	// Compare Settings
@@ -77,27 +80,27 @@ func (a *Account) Diff(b *Account) map[string]interface{} {
 	// JSON field comparison - attribute-by-attribute diff for struct types
 
 	// Handle pointer to struct
-	if a.Settings == nil && b.Settings != nil {
-		// a is nil, b is not nil - use entire b
-		jsonValue, err := sonic.Marshal(b.Settings)
+	if new.Settings == nil && old.Settings != nil {
+		// new is nil, old is not nil - set to null
+		diff["Settings"] = nil
+	} else if new.Settings != nil && old.Settings == nil {
+		// new is not nil, old is nil - use entire new
+		jsonValue, err := sonic.Marshal(new.Settings)
 		if err == nil && !isEmptyJSON(string(jsonValue)) {
 			diff["Settings"] = gorm.Expr("? || ?", clause.Column{Name: "settings"}, string(jsonValue))
 		} else if err != nil {
-			diff["Settings"] = b.Settings
+			diff["Settings"] = new.Settings
 		}
-	} else if a.Settings != nil && b.Settings == nil {
-		// a is not nil, b is nil - set to null
-		diff["Settings"] = nil
-	} else if a.Settings != nil && b.Settings != nil {
+	} else if new.Settings != nil && old.Settings != nil {
 		// Both are not nil - use attribute-by-attribute diff
-		SettingsDiff := a.Settings.Diff(b.Settings)
+		SettingsDiff := new.Settings.Diff(old.Settings)
 		if len(SettingsDiff) > 0 {
 			jsonValue, err := sonic.Marshal(SettingsDiff)
 			if err == nil && !isEmptyJSON(string(jsonValue)) {
 				diff["Settings"] = gorm.Expr("? || ?", clause.Column{Name: "settings"}, string(jsonValue))
 			} else if err != nil {
 				// Fallback to regular assignment if JSON marshaling fails
-				diff["Settings"] = b.Settings
+				diff["Settings"] = new.Settings
 			}
 		}
 	}
@@ -109,27 +112,27 @@ func (a *Account) Diff(b *Account) map[string]interface{} {
 	// JSON field comparison - attribute-by-attribute diff for struct types
 
 	// Handle pointer to struct
-	if a.Data == nil && b.Data != nil {
-		// a is nil, b is not nil - use entire b
-		jsonValue, err := sonic.Marshal(b.Data)
+	if new.Data == nil && old.Data != nil {
+		// new is nil, old is not nil - set to null
+		diff["Data"] = nil
+	} else if new.Data != nil && old.Data == nil {
+		// new is not nil, old is nil - use entire new
+		jsonValue, err := sonic.Marshal(new.Data)
 		if err == nil && !isEmptyJSON(string(jsonValue)) {
 			diff["Data"] = gorm.Expr("? || ?", clause.Column{Name: "data"}, string(jsonValue))
 		} else if err != nil {
-			diff["Data"] = b.Data
+			diff["Data"] = new.Data
 		}
-	} else if a.Data != nil && b.Data == nil {
-		// a is not nil, b is nil - set to null
-		diff["Data"] = nil
-	} else if a.Data != nil && b.Data != nil {
+	} else if new.Data != nil && old.Data != nil {
 		// Both are not nil - use attribute-by-attribute diff
-		DataDiff := a.Data.Diff(b.Data)
+		DataDiff := new.Data.Diff(old.Data)
 		if len(DataDiff) > 0 {
 			jsonValue, err := sonic.Marshal(DataDiff)
 			if err == nil && !isEmptyJSON(string(jsonValue)) {
 				diff["Data"] = gorm.Expr("? || ?", clause.Column{Name: "data"}, string(jsonValue))
 			} else if err != nil {
 				// Fallback to regular assignment if JSON marshaling fails
-				diff["Data"] = b.Data
+				diff["Data"] = new.Data
 			}
 		}
 	}
@@ -137,22 +140,22 @@ func (a *Account) Diff(b *Account) map[string]interface{} {
 	// Compare IsActive
 
 	// Simple type comparison
-	if a.IsActive != b.IsActive {
-		diff["IsActive"] = b.IsActive
+	if new.IsActive != old.IsActive {
+		diff["IsActive"] = new.IsActive
 	}
 
 	// Compare CorrelationId
 
 	// Simple type comparison
-	if a.CorrelationId != b.CorrelationId {
-		diff["CorrelationId"] = b.CorrelationId
+	if new.CorrelationId != old.CorrelationId {
+		diff["CorrelationId"] = new.CorrelationId
 	}
 
 	// Compare WebhookUrl
 
 	// Simple type comparison
-	if a.WebhookUrl != b.WebhookUrl {
-		diff["WebhookUrl"] = b.WebhookUrl
+	if new.WebhookUrl != old.WebhookUrl {
+		diff["WebhookUrl"] = new.WebhookUrl
 	}
 
 	// Compare CreatedAt
@@ -160,8 +163,8 @@ func (a *Account) Diff(b *Account) map[string]interface{} {
 	// Time comparison
 
 	// Direct time comparison
-	if !a.CreatedAt.Equal(b.CreatedAt) {
-		diff["CreatedAt"] = b.CreatedAt
+	if !new.CreatedAt.Equal(old.CreatedAt) {
+		diff["CreatedAt"] = new.CreatedAt
 
 	}
 
@@ -170,34 +173,35 @@ func (a *Account) Diff(b *Account) map[string]interface{} {
 	// Time comparison
 
 	// Direct time comparison
-	if !a.UpdatedAt.Equal(b.UpdatedAt) {
-		diff["UpdatedAt"] = b.UpdatedAt
+	if !new.UpdatedAt.Equal(old.UpdatedAt) {
+		diff["UpdatedAt"] = new.UpdatedAt
 
 	}
 
 	// Compare DeletedAt
 
 	// GORM DeletedAt comparison
-	if a.DeletedAt != b.DeletedAt {
-		diff["DeletedAt"] = b.DeletedAt
+	if new.DeletedAt != old.DeletedAt {
+		diff["DeletedAt"] = new.DeletedAt
 	}
 
 	// Compare Services
 
 	// Complex type comparison (slice, map, interface, etc.)
-	if !reflect.DeepEqual(a.Services, b.Services) {
-		diff["Services"] = b.Services
+	if !reflect.DeepEqual(new.Services, old.Services) {
+		diff["Services"] = new.Services
 	}
 
 	return diff
 }
 
-// Diff compares this ServerPod instance with another and returns a map of differences
+// Diff compares this ServerPod instance (new) with another (old) and returns a map of differences
 // with only the new values for fields that have changed.
+// Usage: newValues = new.Diff(old)
 // Returns nil if either pointer is nil.
-func (a *ServerPod) Diff(b *ServerPod) map[string]interface{} {
+func (new *ServerPod) Diff(old *ServerPod) map[string]interface{} {
 	// Handle nil pointers
-	if a == nil || b == nil {
+	if new == nil || old == nil {
 		return nil
 	}
 
@@ -208,29 +212,29 @@ func (a *ServerPod) Diff(b *ServerPod) map[string]interface{} {
 	// UUID comparison
 
 	// Direct UUID comparison
-	if a.Id != b.Id {
-		diff["Id"] = b.Id
+	if new.Id != old.Id {
+		diff["Id"] = new.Id
 	}
 
 	// Compare Name
 
 	// Simple type comparison
-	if a.Name != b.Name {
-		diff["Name"] = b.Name
+	if new.Name != old.Name {
+		diff["Name"] = new.Name
 	}
 
 	// Compare Address
 
 	// Simple type comparison
-	if a.Address != b.Address {
-		diff["Address"] = b.Address
+	if new.Address != old.Address {
+		diff["Address"] = new.Address
 	}
 
 	// Compare Version
 
 	// Simple type comparison
-	if a.Version != b.Version {
-		diff["Version"] = b.Version
+	if new.Version != old.Version {
+		diff["Version"] = new.Version
 	}
 
 	// Compare Settings
@@ -238,13 +242,13 @@ func (a *ServerPod) Diff(b *ServerPod) map[string]interface{} {
 	// JSON field comparison - handle both datatypes.JSON and struct types with jsonb storage
 
 	// Use bytes.Equal for datatypes.JSON ([]byte underlying type)
-	if !bytes.Equal([]byte(a.Settings), []byte(b.Settings)) {
-		jsonValue, err := sonic.Marshal(b.Settings)
+	if !bytes.Equal([]byte(new.Settings), []byte(old.Settings)) {
+		jsonValue, err := sonic.Marshal(new.Settings)
 		if err == nil && !isEmptyJSON(string(jsonValue)) {
 			diff["Settings"] = gorm.Expr("? || ?", clause.Column{Name: "settings"}, string(jsonValue))
 		} else if err != nil {
 			// Fallback to regular assignment if JSON marshaling fails
-			diff["Settings"] = b.Settings
+			diff["Settings"] = new.Settings
 		}
 		// Skip adding to diff if JSON is empty (no-op update)
 	}
@@ -254,8 +258,8 @@ func (a *ServerPod) Diff(b *ServerPod) map[string]interface{} {
 	// Time comparison
 
 	// Direct time comparison
-	if !a.LastPingAt.Equal(b.LastPingAt) {
-		diff["LastPingAt"] = b.LastPingAt
+	if !new.LastPingAt.Equal(old.LastPingAt) {
+		diff["LastPingAt"] = new.LastPingAt
 
 	}
 
@@ -264,8 +268,8 @@ func (a *ServerPod) Diff(b *ServerPod) map[string]interface{} {
 	// Time comparison
 
 	// Direct time comparison
-	if !a.CreatedAt.Equal(b.CreatedAt) {
-		diff["CreatedAt"] = b.CreatedAt
+	if !new.CreatedAt.Equal(old.CreatedAt) {
+		diff["CreatedAt"] = new.CreatedAt
 
 	}
 
@@ -274,16 +278,16 @@ func (a *ServerPod) Diff(b *ServerPod) map[string]interface{} {
 	// Time comparison
 
 	// Direct time comparison
-	if !a.UpdatedAt.Equal(b.UpdatedAt) {
-		diff["UpdatedAt"] = b.UpdatedAt
+	if !new.UpdatedAt.Equal(old.UpdatedAt) {
+		diff["UpdatedAt"] = new.UpdatedAt
 
 	}
 
 	// Compare DeletedAt
 
 	// GORM DeletedAt comparison
-	if a.DeletedAt != b.DeletedAt {
-		diff["DeletedAt"] = b.DeletedAt
+	if new.DeletedAt != old.DeletedAt {
+		diff["DeletedAt"] = new.DeletedAt
 	}
 
 	// Compare ServerPodTypeId
@@ -291,26 +295,27 @@ func (a *ServerPod) Diff(b *ServerPod) map[string]interface{} {
 	// UUID comparison
 
 	// Direct UUID comparison
-	if a.ServerPodTypeId != b.ServerPodTypeId {
-		diff["ServerPodTypeId"] = b.ServerPodTypeId
+	if new.ServerPodTypeId != old.ServerPodTypeId {
+		diff["ServerPodTypeId"] = new.ServerPodTypeId
 	}
 
 	// Compare ServerPodType
 
 	// Complex type comparison (slice, map, interface, etc.)
-	if !reflect.DeepEqual(a.ServerPodType, b.ServerPodType) {
-		diff["ServerPodType"] = b.ServerPodType
+	if !reflect.DeepEqual(new.ServerPodType, old.ServerPodType) {
+		diff["ServerPodType"] = new.ServerPodType
 	}
 
 	return diff
 }
 
-// Diff compares this ServiceVersion instance with another and returns a map of differences
+// Diff compares this ServiceVersion instance (new) with another (old) and returns a map of differences
 // with only the new values for fields that have changed.
+// Usage: newValues = new.Diff(old)
 // Returns nil if either pointer is nil.
-func (a *ServiceVersion) Diff(b *ServiceVersion) map[string]interface{} {
+func (new *ServiceVersion) Diff(old *ServiceVersion) map[string]interface{} {
 	// Handle nil pointers
-	if a == nil || b == nil {
+	if new == nil || old == nil {
 		return nil
 	}
 
@@ -319,26 +324,27 @@ func (a *ServiceVersion) Diff(b *ServiceVersion) map[string]interface{} {
 	// Compare WppConnectVersion
 
 	// Simple type comparison
-	if a.WppConnectVersion != b.WppConnectVersion {
-		diff["WppConnectVersion"] = b.WppConnectVersion
+	if new.WppConnectVersion != old.WppConnectVersion {
+		diff["WppConnectVersion"] = new.WppConnectVersion
 	}
 
 	// Compare WaVersion
 
 	// Simple type comparison
-	if a.WaVersion != b.WaVersion {
-		diff["WaVersion"] = b.WaVersion
+	if new.WaVersion != old.WaVersion {
+		diff["WaVersion"] = new.WaVersion
 	}
 
 	return diff
 }
 
-// Diff compares this ServerPodType instance with another and returns a map of differences
+// Diff compares this ServerPodType instance (new) with another (old) and returns a map of differences
 // with only the new values for fields that have changed.
+// Usage: newValues = new.Diff(old)
 // Returns nil if either pointer is nil.
-func (a *ServerPodType) Diff(b *ServerPodType) map[string]interface{} {
+func (new *ServerPodType) Diff(old *ServerPodType) map[string]interface{} {
 	// Handle nil pointers
-	if a == nil || b == nil {
+	if new == nil || old == nil {
 		return nil
 	}
 
@@ -349,15 +355,15 @@ func (a *ServerPodType) Diff(b *ServerPodType) map[string]interface{} {
 	// UUID comparison
 
 	// Direct UUID comparison
-	if a.Id != b.Id {
-		diff["Id"] = b.Id
+	if new.Id != old.Id {
+		diff["Id"] = new.Id
 	}
 
 	// Compare Name
 
 	// Simple type comparison
-	if a.Name != b.Name {
-		diff["Name"] = b.Name
+	if new.Name != old.Name {
+		diff["Name"] = new.Name
 	}
 
 	// Compare Version
@@ -367,27 +373,27 @@ func (a *ServerPodType) Diff(b *ServerPodType) map[string]interface{} {
 	// JSON field comparison - attribute-by-attribute diff for struct types
 
 	// Handle pointer to struct
-	if a.Version == nil && b.Version != nil {
-		// a is nil, b is not nil - use entire b
-		jsonValue, err := sonic.Marshal(b.Version)
+	if new.Version == nil && old.Version != nil {
+		// new is nil, old is not nil - set to null
+		diff["Version"] = nil
+	} else if new.Version != nil && old.Version == nil {
+		// new is not nil, old is nil - use entire new
+		jsonValue, err := sonic.Marshal(new.Version)
 		if err == nil && !isEmptyJSON(string(jsonValue)) {
 			diff["Version"] = gorm.Expr("? || ?", clause.Column{Name: "version"}, string(jsonValue))
 		} else if err != nil {
-			diff["Version"] = b.Version
+			diff["Version"] = new.Version
 		}
-	} else if a.Version != nil && b.Version == nil {
-		// a is not nil, b is nil - set to null
-		diff["Version"] = nil
-	} else if a.Version != nil && b.Version != nil {
+	} else if new.Version != nil && old.Version != nil {
 		// Both are not nil - use attribute-by-attribute diff
-		VersionDiff := a.Version.Diff(b.Version)
+		VersionDiff := new.Version.Diff(old.Version)
 		if len(VersionDiff) > 0 {
 			jsonValue, err := sonic.Marshal(VersionDiff)
 			if err == nil && !isEmptyJSON(string(jsonValue)) {
 				diff["Version"] = gorm.Expr("? || ?", clause.Column{Name: "version"}, string(jsonValue))
 			} else if err != nil {
 				// Fallback to regular assignment if JSON marshaling fails
-				diff["Version"] = b.Version
+				diff["Version"] = new.Version
 			}
 		}
 	}
@@ -395,50 +401,50 @@ func (a *ServerPodType) Diff(b *ServerPodType) map[string]interface{} {
 	// Compare AutoScalable
 
 	// Simple type comparison
-	if a.AutoScalable != b.AutoScalable {
-		diff["AutoScalable"] = b.AutoScalable
+	if new.AutoScalable != old.AutoScalable {
+		diff["AutoScalable"] = new.AutoScalable
 	}
 
 	// Compare Cloud
 
 	// Simple type comparison
-	if a.Cloud != b.Cloud {
-		diff["Cloud"] = b.Cloud
+	if new.Cloud != old.Cloud {
+		diff["Cloud"] = new.Cloud
 	}
 
 	// Compare ServerSize
 
 	// Simple type comparison
-	if a.ServerSize != b.ServerSize {
-		diff["ServerSize"] = b.ServerSize
+	if new.ServerSize != old.ServerSize {
+		diff["ServerSize"] = new.ServerSize
 	}
 
 	// Compare MaxPerPod
 
 	// Simple type comparison
-	if a.MaxPerPod != b.MaxPerPod {
-		diff["MaxPerPod"] = b.MaxPerPod
+	if new.MaxPerPod != old.MaxPerPod {
+		diff["MaxPerPod"] = new.MaxPerPod
 	}
 
 	// Compare Min
 
 	// Simple type comparison
-	if a.Min != b.Min {
-		diff["Min"] = b.Min
+	if new.Min != old.Min {
+		diff["Min"] = new.Min
 	}
 
 	// Compare DesiredAvailable
 
 	// Simple type comparison
-	if a.DesiredAvailable != b.DesiredAvailable {
-		diff["DesiredAvailable"] = b.DesiredAvailable
+	if new.DesiredAvailable != old.DesiredAvailable {
+		diff["DesiredAvailable"] = new.DesiredAvailable
 	}
 
 	// Compare StartPriority
 
 	// Simple type comparison
-	if a.StartPriority != b.StartPriority {
-		diff["StartPriority"] = b.StartPriority
+	if new.StartPriority != old.StartPriority {
+		diff["StartPriority"] = new.StartPriority
 	}
 
 	// Compare AccountIdWhitelist
@@ -446,13 +452,13 @@ func (a *ServerPodType) Diff(b *ServerPodType) map[string]interface{} {
 	// JSON field comparison - handle both datatypes.JSON and struct types with jsonb storage
 
 	// JSON field comparison - custom slice types with jsonb storage (not comparable with !=)
-	if !reflect.DeepEqual(a.AccountIdWhitelist, b.AccountIdWhitelist) {
-		jsonValue, err := sonic.Marshal(b.AccountIdWhitelist)
+	if !reflect.DeepEqual(new.AccountIdWhitelist, old.AccountIdWhitelist) {
+		jsonValue, err := sonic.Marshal(new.AccountIdWhitelist)
 		if err == nil && !isEmptyJSON(string(jsonValue)) {
 			diff["AccountIdWhitelist"] = gorm.Expr("? || ?", clause.Column{Name: "account_id_whitelist"}, string(jsonValue))
 		} else if err != nil {
 			// Fallback to regular assignment if JSON marshaling fails
-			diff["AccountIdWhitelist"] = b.AccountIdWhitelist
+			diff["AccountIdWhitelist"] = new.AccountIdWhitelist
 		}
 		// Skip adding to diff if JSON is empty (no-op update)
 	}
@@ -462,13 +468,13 @@ func (a *ServerPodType) Diff(b *ServerPodType) map[string]interface{} {
 	// JSON field comparison - handle both datatypes.JSON and struct types with jsonb storage
 
 	// JSON field comparison - custom slice types with jsonb storage (not comparable with !=)
-	if !reflect.DeepEqual(a.ServiceIdWhitelist, b.ServiceIdWhitelist) {
-		jsonValue, err := sonic.Marshal(b.ServiceIdWhitelist)
+	if !reflect.DeepEqual(new.ServiceIdWhitelist, old.ServiceIdWhitelist) {
+		jsonValue, err := sonic.Marshal(new.ServiceIdWhitelist)
 		if err == nil && !isEmptyJSON(string(jsonValue)) {
 			diff["ServiceIdWhitelist"] = gorm.Expr("? || ?", clause.Column{Name: "service_id_whitelist"}, string(jsonValue))
 		} else if err != nil {
 			// Fallback to regular assignment if JSON marshaling fails
-			diff["ServiceIdWhitelist"] = b.ServiceIdWhitelist
+			diff["ServiceIdWhitelist"] = new.ServiceIdWhitelist
 		}
 		// Skip adding to diff if JSON is empty (no-op update)
 	}
@@ -478,8 +484,8 @@ func (a *ServerPodType) Diff(b *ServerPodType) map[string]interface{} {
 	// Time comparison
 
 	// Direct time comparison
-	if !a.CreatedAt.Equal(b.CreatedAt) {
-		diff["CreatedAt"] = b.CreatedAt
+	if !new.CreatedAt.Equal(old.CreatedAt) {
+		diff["CreatedAt"] = new.CreatedAt
 
 	}
 
@@ -488,27 +494,28 @@ func (a *ServerPodType) Diff(b *ServerPodType) map[string]interface{} {
 	// Time comparison
 
 	// Direct time comparison
-	if !a.UpdatedAt.Equal(b.UpdatedAt) {
-		diff["UpdatedAt"] = b.UpdatedAt
+	if !new.UpdatedAt.Equal(old.UpdatedAt) {
+		diff["UpdatedAt"] = new.UpdatedAt
 
 	}
 
 	// Compare DeletedAt
 
 	// GORM DeletedAt comparison
-	if a.DeletedAt != b.DeletedAt {
-		diff["DeletedAt"] = b.DeletedAt
+	if new.DeletedAt != old.DeletedAt {
+		diff["DeletedAt"] = new.DeletedAt
 	}
 
 	return diff
 }
 
-// Diff compares this ServiceDataStatus instance with another and returns a map of differences
+// Diff compares this ServiceDataStatus instance (new) with another (old) and returns a map of differences
 // with only the new values for fields that have changed.
+// Usage: newValues = new.Diff(old)
 // Returns nil if either pointer is nil.
-func (a *ServiceDataStatus) Diff(b *ServiceDataStatus) map[string]interface{} {
+func (new *ServiceDataStatus) Diff(old *ServiceDataStatus) map[string]interface{} {
 	// Handle nil pointers
-	if a == nil || b == nil {
+	if new == nil || old == nil {
 		return nil
 	}
 
@@ -517,159 +524,160 @@ func (a *ServiceDataStatus) Diff(b *ServiceDataStatus) map[string]interface{} {
 	// Compare IsSyncing
 
 	// Simple type comparison
-	if a.IsSyncing != b.IsSyncing {
-		diff["isSyncing"] = b.IsSyncing
+	if new.IsSyncing != old.IsSyncing {
+		diff["isSyncing"] = new.IsSyncing
 	}
 
 	// Compare IsConnected
 
 	// Simple type comparison
-	if a.IsConnected != b.IsConnected {
-		diff["isConnected"] = b.IsConnected
+	if new.IsConnected != old.IsConnected {
+		diff["isConnected"] = new.IsConnected
 	}
 
 	// Compare IsStarting
 
 	// Simple type comparison
-	if a.IsStarting != b.IsStarting {
-		diff["isStarting"] = b.IsStarting
+	if new.IsStarting != old.IsStarting {
+		diff["isStarting"] = new.IsStarting
 	}
 
 	// Compare IsStarted
 
 	// Simple type comparison
-	if a.IsStarted != b.IsStarted {
-		diff["isStarted"] = b.IsStarted
+	if new.IsStarted != old.IsStarted {
+		diff["isStarted"] = new.IsStarted
 	}
 
 	// Compare IsConflicted
 
 	// Simple type comparison
-	if a.IsConflicted != b.IsConflicted {
-		diff["isConflicted"] = b.IsConflicted
+	if new.IsConflicted != old.IsConflicted {
+		diff["isConflicted"] = new.IsConflicted
 	}
 
 	// Compare IsLoading
 
 	// Simple type comparison
-	if a.IsLoading != b.IsLoading {
-		diff["isLoading"] = b.IsLoading
+	if new.IsLoading != old.IsLoading {
+		diff["isLoading"] = new.IsLoading
 	}
 
 	// Compare IsOnChatPage
 
 	// Simple type comparison
-	if a.IsOnChatPage != b.IsOnChatPage {
-		diff["isOnChatPage"] = b.IsOnChatPage
+	if new.IsOnChatPage != old.IsOnChatPage {
+		diff["isOnChatPage"] = new.IsOnChatPage
 	}
 
 	// Compare EnteredQrCodePageAt
 
 	// Simple type comparison
-	if a.EnteredQrCodePageAt != b.EnteredQrCodePageAt {
-		diff["enteredQrCodePageAt"] = b.EnteredQrCodePageAt
+	if new.EnteredQrCodePageAt != old.EnteredQrCodePageAt {
+		diff["enteredQrCodePageAt"] = new.EnteredQrCodePageAt
 	}
 
 	// Compare DisconnectedAt
 
 	// Simple type comparison
-	if a.DisconnectedAt != b.DisconnectedAt {
-		diff["disconnectedAt"] = b.DisconnectedAt
+	if new.DisconnectedAt != old.DisconnectedAt {
+		diff["disconnectedAt"] = new.DisconnectedAt
 	}
 
 	// Compare IsOnQrPage
 
 	// Simple type comparison
-	if a.IsOnQrPage != b.IsOnQrPage {
-		diff["isOnQrPage"] = b.IsOnQrPage
+	if new.IsOnQrPage != old.IsOnQrPage {
+		diff["isOnQrPage"] = new.IsOnQrPage
 	}
 
 	// Compare IsQrCodeExpired
 
 	// Simple type comparison
-	if a.IsQrCodeExpired != b.IsQrCodeExpired {
-		diff["isQrCodeExpired"] = b.IsQrCodeExpired
+	if new.IsQrCodeExpired != old.IsQrCodeExpired {
+		diff["isQrCodeExpired"] = new.IsQrCodeExpired
 	}
 
 	// Compare IsWebConnected
 
 	// Simple type comparison
-	if a.IsWebConnected != b.IsWebConnected {
-		diff["isWebConnected"] = b.IsWebConnected
+	if new.IsWebConnected != old.IsWebConnected {
+		diff["isWebConnected"] = new.IsWebConnected
 	}
 
 	// Compare IsWebSyncing
 
 	// Simple type comparison
-	if a.IsWebSyncing != b.IsWebSyncing {
-		diff["isWebSyncing"] = b.IsWebSyncing
+	if new.IsWebSyncing != old.IsWebSyncing {
+		diff["isWebSyncing"] = new.IsWebSyncing
 	}
 
 	// Compare Mode
 
 	// Simple type comparison
-	if a.Mode != b.Mode {
-		diff["mode"] = b.Mode
+	if new.Mode != old.Mode {
+		diff["mode"] = new.Mode
 	}
 
 	// Compare MyId
 
 	// Simple type comparison
-	if a.MyId != b.MyId {
-		diff["myId"] = b.MyId
+	if new.MyId != old.MyId {
+		diff["myId"] = new.MyId
 	}
 
 	// Compare MyName
 
 	// Simple type comparison
-	if a.MyName != b.MyName {
-		diff["myName"] = b.MyName
+	if new.MyName != old.MyName {
+		diff["myName"] = new.MyName
 	}
 
 	// Compare MyNumber
 
 	// Simple type comparison
-	if a.MyNumber != b.MyNumber {
-		diff["myNumber"] = b.MyNumber
+	if new.MyNumber != old.MyNumber {
+		diff["myNumber"] = new.MyNumber
 	}
 
 	// Compare QrCodeExpiresAt
 
 	// Simple type comparison
-	if a.QrCodeExpiresAt != b.QrCodeExpiresAt {
-		diff["qrCodeExpiresAt"] = b.QrCodeExpiresAt
+	if new.QrCodeExpiresAt != old.QrCodeExpiresAt {
+		diff["qrCodeExpiresAt"] = new.QrCodeExpiresAt
 	}
 
 	// Compare QrCodeUrl
 
 	// Simple type comparison
-	if a.QrCodeUrl != b.QrCodeUrl {
-		diff["qrCodeUrl"] = b.QrCodeUrl
+	if new.QrCodeUrl != old.QrCodeUrl {
+		diff["qrCodeUrl"] = new.QrCodeUrl
 	}
 
 	// Compare State
 
 	// Simple type comparison
-	if a.State != b.State {
-		diff["state"] = b.State
+	if new.State != old.State {
+		diff["state"] = new.State
 	}
 
 	// Compare WaVersion
 
 	// Simple type comparison
-	if a.WaVersion != b.WaVersion {
-		diff["waVersion"] = b.WaVersion
+	if new.WaVersion != old.WaVersion {
+		diff["waVersion"] = new.WaVersion
 	}
 
 	return diff
 }
 
-// Diff compares this ServiceData instance with another and returns a map of differences
+// Diff compares this ServiceData instance (new) with another (old) and returns a map of differences
 // with only the new values for fields that have changed.
+// Usage: newValues = new.Diff(old)
 // Returns nil if either pointer is nil.
-func (a *ServiceData) Diff(b *ServiceData) map[string]interface{} {
+func (new *ServiceData) Diff(old *ServiceData) map[string]interface{} {
 	// Handle nil pointers
-	if a == nil || b == nil {
+	if new == nil || old == nil {
 		return nil
 	}
 
@@ -678,8 +686,8 @@ func (a *ServiceData) Diff(b *ServiceData) map[string]interface{} {
 	// Compare MyId
 
 	// Simple type comparison
-	if a.MyId != b.MyId {
-		diff["myId"] = b.MyId
+	if new.MyId != old.MyId {
+		diff["myId"] = new.MyId
 	}
 
 	// Compare LastSyncAt
@@ -687,8 +695,8 @@ func (a *ServiceData) Diff(b *ServiceData) map[string]interface{} {
 	// Time comparison
 
 	// Pointer to time comparison
-	if (a.LastSyncAt == nil) != (b.LastSyncAt == nil) || (a.LastSyncAt != nil && !a.LastSyncAt.Equal(*b.LastSyncAt)) {
-		diff["lastSyncAt"] = b.LastSyncAt
+	if (new.LastSyncAt == nil) != (old.LastSyncAt == nil) || (new.LastSyncAt != nil && !new.LastSyncAt.Equal(*old.LastSyncAt)) {
+		diff["lastSyncAt"] = new.LastSyncAt
 	}
 
 	// Compare LastMessageTimestamp
@@ -696,22 +704,22 @@ func (a *ServiceData) Diff(b *ServiceData) map[string]interface{} {
 	// Time comparison
 
 	// Pointer to time comparison
-	if (a.LastMessageTimestamp == nil) != (b.LastMessageTimestamp == nil) || (a.LastMessageTimestamp != nil && !a.LastMessageTimestamp.Equal(*b.LastMessageTimestamp)) {
-		diff["lastMessageTimestamp"] = b.LastMessageTimestamp
+	if (new.LastMessageTimestamp == nil) != (old.LastMessageTimestamp == nil) || (new.LastMessageTimestamp != nil && !new.LastMessageTimestamp.Equal(*old.LastMessageTimestamp)) {
+		diff["lastMessageTimestamp"] = new.LastMessageTimestamp
 	}
 
 	// Compare SyncCount
 
 	// Simple type comparison
-	if a.SyncCount != b.SyncCount {
-		diff["syncCount"] = b.SyncCount
+	if new.SyncCount != old.SyncCount {
+		diff["syncCount"] = new.SyncCount
 	}
 
 	// Compare SyncFlowDone
 
 	// Simple type comparison
-	if a.SyncFlowDone != b.SyncFlowDone {
-		diff["syncFlowDone"] = b.SyncFlowDone
+	if new.SyncFlowDone != old.SyncFlowDone {
+		diff["syncFlowDone"] = new.SyncFlowDone
 	}
 
 	// Compare Status
@@ -721,14 +729,14 @@ func (a *ServiceData) Diff(b *ServiceData) map[string]interface{} {
 	// JSON field comparison - attribute-by-attribute diff for struct types
 
 	// Handle direct struct (not pointer) - use attribute-by-attribute diff
-	StatusDiff := a.Status.Diff(&b.Status)
+	StatusDiff := new.Status.Diff(&old.Status)
 	if len(StatusDiff) > 0 {
 		jsonValue, err := sonic.Marshal(StatusDiff)
 		if err == nil && !isEmptyJSON(string(jsonValue)) {
 			diff["status"] = gorm.Expr("? || ?", clause.Column{Name: "status"}, string(jsonValue))
 		} else if err != nil {
 			// Fallback to regular assignment if JSON marshaling fails
-			diff["status"] = b.Status
+			diff["status"] = new.Status
 		}
 	}
 
@@ -737,19 +745,20 @@ func (a *ServiceData) Diff(b *ServiceData) map[string]interface{} {
 	// Time comparison
 
 	// Pointer to time comparison
-	if (a.StatusTimestamp == nil) != (b.StatusTimestamp == nil) || (a.StatusTimestamp != nil && !a.StatusTimestamp.Equal(*b.StatusTimestamp)) {
-		diff["statusTimestamp"] = b.StatusTimestamp
+	if (new.StatusTimestamp == nil) != (old.StatusTimestamp == nil) || (new.StatusTimestamp != nil && !new.StatusTimestamp.Equal(*old.StatusTimestamp)) {
+		diff["statusTimestamp"] = new.StatusTimestamp
 	}
 
 	return diff
 }
 
-// Diff compares this ServiceSettings instance with another and returns a map of differences
+// Diff compares this ServiceSettings instance (new) with another (old) and returns a map of differences
 // with only the new values for fields that have changed.
+// Usage: newValues = new.Diff(old)
 // Returns nil if either pointer is nil.
-func (a *ServiceSettings) Diff(b *ServiceSettings) map[string]interface{} {
+func (new *ServiceSettings) Diff(old *ServiceSettings) map[string]interface{} {
 	// Handle nil pointers
-	if a == nil || b == nil {
+	if new == nil || old == nil {
 		return nil
 	}
 
@@ -758,33 +767,34 @@ func (a *ServiceSettings) Diff(b *ServiceSettings) map[string]interface{} {
 	// Compare KeepOnline
 
 	// Simple type comparison
-	if a.KeepOnline != b.KeepOnline {
-		diff["keepOnline"] = b.KeepOnline
+	if new.KeepOnline != old.KeepOnline {
+		diff["keepOnline"] = new.KeepOnline
 	}
 
 	// Compare WppConnectVersion
 
 	// Simple type comparison
-	if a.WppConnectVersion != b.WppConnectVersion {
-		diff["wppConnectVersion"] = b.WppConnectVersion
+	if new.WppConnectVersion != old.WppConnectVersion {
+		diff["wppConnectVersion"] = new.WppConnectVersion
 	}
 
 	// Compare WaVersion
 
 	// Simple type comparison
-	if a.WaVersion != b.WaVersion {
-		diff["waVersion"] = b.WaVersion
+	if new.WaVersion != old.WaVersion {
+		diff["waVersion"] = new.WaVersion
 	}
 
 	return diff
 }
 
-// Diff compares this Service instance with another and returns a map of differences
+// Diff compares this Service instance (new) with another (old) and returns a map of differences
 // with only the new values for fields that have changed.
+// Usage: newValues = new.Diff(old)
 // Returns nil if either pointer is nil.
-func (a *Service) Diff(b *Service) map[string]interface{} {
+func (new *Service) Diff(old *Service) map[string]interface{} {
 	// Handle nil pointers
-	if a == nil || b == nil {
+	if new == nil || old == nil {
 		return nil
 	}
 
@@ -795,15 +805,15 @@ func (a *Service) Diff(b *Service) map[string]interface{} {
 	// UUID comparison
 
 	// Direct UUID comparison
-	if a.Id != b.Id {
-		diff["Id"] = b.Id
+	if new.Id != old.Id {
+		diff["Id"] = new.Id
 	}
 
 	// Compare Name
 
 	// Simple type comparison
-	if a.Name != b.Name {
-		diff["Name"] = b.Name
+	if new.Name != old.Name {
+		diff["Name"] = new.Name
 	}
 
 	// Compare Data
@@ -813,27 +823,27 @@ func (a *Service) Diff(b *Service) map[string]interface{} {
 	// JSON field comparison - attribute-by-attribute diff for struct types
 
 	// Handle pointer to struct
-	if a.Data == nil && b.Data != nil {
-		// a is nil, b is not nil - use entire b
-		jsonValue, err := sonic.Marshal(b.Data)
+	if new.Data == nil && old.Data != nil {
+		// new is nil, old is not nil - set to null
+		diff["Data"] = nil
+	} else if new.Data != nil && old.Data == nil {
+		// new is not nil, old is nil - use entire new
+		jsonValue, err := sonic.Marshal(new.Data)
 		if err == nil && !isEmptyJSON(string(jsonValue)) {
 			diff["Data"] = gorm.Expr("? || ?", clause.Column{Name: "data"}, string(jsonValue))
 		} else if err != nil {
-			diff["Data"] = b.Data
+			diff["Data"] = new.Data
 		}
-	} else if a.Data != nil && b.Data == nil {
-		// a is not nil, b is nil - set to null
-		diff["Data"] = nil
-	} else if a.Data != nil && b.Data != nil {
+	} else if new.Data != nil && old.Data != nil {
 		// Both are not nil - use attribute-by-attribute diff
-		DataDiff := a.Data.Diff(b.Data)
+		DataDiff := new.Data.Diff(old.Data)
 		if len(DataDiff) > 0 {
 			jsonValue, err := sonic.Marshal(DataDiff)
 			if err == nil && !isEmptyJSON(string(jsonValue)) {
 				diff["Data"] = gorm.Expr("? || ?", clause.Column{Name: "data"}, string(jsonValue))
 			} else if err != nil {
 				// Fallback to regular assignment if JSON marshaling fails
-				diff["Data"] = b.Data
+				diff["Data"] = new.Data
 			}
 		}
 	}
@@ -845,27 +855,27 @@ func (a *Service) Diff(b *Service) map[string]interface{} {
 	// JSON field comparison - attribute-by-attribute diff for struct types
 
 	// Handle pointer to struct
-	if a.Settings == nil && b.Settings != nil {
-		// a is nil, b is not nil - use entire b
-		jsonValue, err := sonic.Marshal(b.Settings)
+	if new.Settings == nil && old.Settings != nil {
+		// new is nil, old is not nil - set to null
+		diff["Settings"] = nil
+	} else if new.Settings != nil && old.Settings == nil {
+		// new is not nil, old is nil - use entire new
+		jsonValue, err := sonic.Marshal(new.Settings)
 		if err == nil && !isEmptyJSON(string(jsonValue)) {
 			diff["Settings"] = gorm.Expr("? || ?", clause.Column{Name: "settings"}, string(jsonValue))
 		} else if err != nil {
-			diff["Settings"] = b.Settings
+			diff["Settings"] = new.Settings
 		}
-	} else if a.Settings != nil && b.Settings == nil {
-		// a is not nil, b is nil - set to null
-		diff["Settings"] = nil
-	} else if a.Settings != nil && b.Settings != nil {
+	} else if new.Settings != nil && old.Settings != nil {
 		// Both are not nil - use attribute-by-attribute diff
-		SettingsDiff := a.Settings.Diff(b.Settings)
+		SettingsDiff := new.Settings.Diff(old.Settings)
 		if len(SettingsDiff) > 0 {
 			jsonValue, err := sonic.Marshal(SettingsDiff)
 			if err == nil && !isEmptyJSON(string(jsonValue)) {
 				diff["Settings"] = gorm.Expr("? || ?", clause.Column{Name: "settings"}, string(jsonValue))
 			} else if err != nil {
 				// Fallback to regular assignment if JSON marshaling fails
-				diff["Settings"] = b.Settings
+				diff["Settings"] = new.Settings
 			}
 		}
 	}
@@ -875,8 +885,8 @@ func (a *Service) Diff(b *Service) map[string]interface{} {
 	// Time comparison
 
 	// Direct time comparison
-	if !a.CreatedAt.Equal(b.CreatedAt) {
-		diff["CreatedAt"] = b.CreatedAt
+	if !new.CreatedAt.Equal(old.CreatedAt) {
+		diff["CreatedAt"] = new.CreatedAt
 
 	}
 
@@ -885,16 +895,16 @@ func (a *Service) Diff(b *Service) map[string]interface{} {
 	// Time comparison
 
 	// Direct time comparison
-	if !a.UpdatedAt.Equal(b.UpdatedAt) {
-		diff["UpdatedAt"] = b.UpdatedAt
+	if !new.UpdatedAt.Equal(old.UpdatedAt) {
+		diff["UpdatedAt"] = new.UpdatedAt
 
 	}
 
 	// Compare DeletedAt
 
 	// GORM DeletedAt comparison
-	if a.DeletedAt != b.DeletedAt {
-		diff["DeletedAt"] = b.DeletedAt
+	if new.DeletedAt != old.DeletedAt {
+		diff["DeletedAt"] = new.DeletedAt
 	}
 
 	// Compare AccountId
@@ -902,8 +912,8 @@ func (a *Service) Diff(b *Service) map[string]interface{} {
 	// UUID comparison
 
 	// Direct UUID comparison
-	if a.AccountId != b.AccountId {
-		diff["AccountId"] = b.AccountId
+	if new.AccountId != old.AccountId {
+		diff["AccountId"] = new.AccountId
 	}
 
 	// Compare ServerPodId
@@ -911,22 +921,22 @@ func (a *Service) Diff(b *Service) map[string]interface{} {
 	// UUID comparison
 
 	// Pointer to UUID comparison
-	if (a.ServerPodId == nil) != (b.ServerPodId == nil) || (a.ServerPodId != nil && *a.ServerPodId != *b.ServerPodId) {
-		diff["ServerPodId"] = b.ServerPodId
+	if (new.ServerPodId == nil) != (old.ServerPodId == nil) || (new.ServerPodId != nil && *new.ServerPodId != *old.ServerPodId) {
+		diff["ServerPodId"] = new.ServerPodId
 	}
 
 	// Compare Account
 
 	// Comparable type comparison
-	if a.Account != b.Account {
-		diff["Account"] = b.Account
+	if new.Account != old.Account {
+		diff["Account"] = new.Account
 	}
 
 	// Compare ServerPod
 
 	// Comparable type comparison
-	if a.ServerPod != b.ServerPod {
-		diff["ServerPod"] = b.ServerPod
+	if new.ServerPod != old.ServerPod {
+		diff["ServerPod"] = new.ServerPod
 	}
 
 	return diff

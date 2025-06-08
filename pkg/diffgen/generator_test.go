@@ -78,13 +78,13 @@ func TestDiffCodeGeneration(t *testing.T) {
 	}
 
 	// Verify it contains diff methods with correct signature
-	if !strings.Contains(code, "func (a *Address) Diff(") {
+	if !strings.Contains(code, "func (new *Address) Diff(") {
 		t.Errorf("Expected generated code to contain Address Diff method with pointer receiver")
 	}
-	if !strings.Contains(code, "func (a *Contact) Diff(") {
+	if !strings.Contains(code, "func (new *Contact) Diff(") {
 		t.Errorf("Expected generated code to contain Contact Diff method with pointer receiver")
 	}
-	if !strings.Contains(code, "func (a *Person) Diff(") {
+	if !strings.Contains(code, "func (new *Person) Diff(") {
 		t.Errorf("Expected generated code to contain Person Diff method with pointer receiver")
 	}
 }
@@ -107,21 +107,18 @@ func TestFieldTypeCategorization(t *testing.T) {
 
 	// Verify that different field types were detected
 	foundSimple := false
-	foundStruct := false
-	foundSlice := false
-	foundMap := false
+	foundComplex := false
+	foundComparable := false
 
 	for _, structInfo := range generator.Structs {
 		for _, field := range structInfo.Fields {
 			switch field.FieldType {
 			case FieldTypeSimple:
 				foundSimple = true
-			case FieldTypeStruct:
-				foundStruct = true
-			case FieldTypeSlice:
-				foundSlice = true
-			case FieldTypeMap:
-				foundMap = true
+			case FieldTypeComplex:
+				foundComplex = true
+			case FieldTypeComparable:
+				foundComparable = true
 			}
 		}
 	}
@@ -129,14 +126,11 @@ func TestFieldTypeCategorization(t *testing.T) {
 	if !foundSimple {
 		t.Error("Expected to find simple field types")
 	}
-	if !foundStruct {
-		t.Error("Expected to find struct field types")
+	if !foundComplex {
+		t.Error("Expected to find complex field types (structs, slices, maps)")
 	}
-	if !foundSlice {
-		t.Error("Expected to find slice field types")
-	}
-	if !foundMap {
-		t.Error("Expected to find map field types")
+	if !foundComparable {
+		t.Error("Expected to find comparable field types (pointers)")
 	}
 }
 
@@ -159,13 +153,13 @@ func TestDiffFunctionGeneration(t *testing.T) {
 	}
 
 	// Verify the generated function contains expected elements
-	if !strings.Contains(code, "func (a *TestAddress) Diff(") {
+	if !strings.Contains(code, "func (new *TestAddress) Diff(") {
 		t.Errorf("Expected method signature Diff with pointer receiver")
 	}
-	if !strings.Contains(code, "a.Street != b.Street") {
+	if !strings.Contains(code, "new.Street != old.Street") {
 		t.Errorf("Expected Street field comparison")
 	}
-	if !strings.Contains(code, "a.City != b.City") {
+	if !strings.Contains(code, "new.City != old.City") {
 		t.Errorf("Expected City field comparison")
 	}
 }
@@ -434,7 +428,7 @@ func TestEmbeddedTemplate(t *testing.T) {
 	}
 
 	// Test that the template contains expected content
-	if !strings.Contains(diffFunctionTemplate, "func (a *{{.Name}}) Diff(") {
+	if !strings.Contains(diffFunctionTemplate, "func (new *{{.Name}}) Diff(") {
 		t.Error("Template should contain the diff function signature")
 	}
 

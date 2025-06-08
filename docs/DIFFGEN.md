@@ -65,36 +65,45 @@ type Person struct {
 DiffGen generates:
 
 ```go
-func DiffPerson(a, b Person) map[string]interface{} {
+// Diff compares this Person instance (new) with another (old) and returns a map of differences
+// with only the new values for fields that have changed.
+// Usage: newValues = new.Diff(old)
+// Returns nil if either pointer is nil.
+func (new *Person) Diff(old *Person) map[string]interface{} {
+    // Handle nil pointers
+    if new == nil || old == nil {
+        return nil
+    }
+
     diff := make(map[string]interface{})
 
     // Simple type comparison
-    if a.Name != b.Name {
-        diff["Name"] = b.Name
+    if new.Name != old.Name {
+        diff["Name"] = new.Name
     }
-    if a.Age != b.Age {
-        diff["Age"] = b.Age
+    if new.Age != old.Age {
+        diff["Age"] = new.Age
     }
 
     // Struct type comparison
-    if !reflect.DeepEqual(a.Address, b.Address) {
-        nestedDiff := DiffAddress(a.Address, b.Address)
+    if !reflect.DeepEqual(new.Address, old.Address) {
+        nestedDiff := new.Address.Diff(&old.Address)
         if len(nestedDiff) > 0 {
             diff["Address"] = nestedDiff
         }
     }
 
     // Slice comparison
-    if !reflect.DeepEqual(a.Contacts, b.Contacts) {
-        diff["Contacts"] = b.Contacts
+    if !reflect.DeepEqual(new.Contacts, old.Contacts) {
+        diff["Contacts"] = new.Contacts
     }
 
     // Pointer comparison
-    if !reflect.DeepEqual(a.Manager, b.Manager) {
-        if a.Manager == nil || b.Manager == nil {
-            diff["Manager"] = b.Manager
+    if !reflect.DeepEqual(new.Manager, old.Manager) {
+        if new.Manager == nil || old.Manager == nil {
+            diff["Manager"] = new.Manager
         } else {
-            nestedDiff := DiffPerson(*a.Manager, *b.Manager)
+            nestedDiff := new.Manager.Diff(old.Manager)
             if len(nestedDiff) > 0 {
                 diff["Manager"] = nestedDiff
             }
@@ -102,8 +111,8 @@ func DiffPerson(a, b Person) map[string]interface{} {
     }
 
     // Map comparison
-    if !reflect.DeepEqual(a.Metadata, b.Metadata) {
-        diff["Metadata"] = b.Metadata
+    if !reflect.DeepEqual(new.Metadata, old.Metadata) {
+        diff["Metadata"] = new.Metadata
     }
 
     return diff
@@ -148,14 +157,14 @@ Perfect for selective database updates:
 
 ```go
 // Before modification
-original := user
+original := user.Clone() // Save original state
 
 // After modification
 user.Name = "New Name"
 user.Email = "new@example.com"
 
-// Generate diff
-diff := DiffUser(original, user)
+// Generate diff - new values compared to old
+diff := user.Diff(original)
 // Result: {"Name": "New Name", "Email": "new@example.com"}
 
 // GORM selective update
@@ -168,17 +177,17 @@ db.Model(&user).Updates(diff)
 ### Nested Struct Changes
 
 ```go
-person1 := Person{
+oldPerson := Person{
     Name: "John",
     Address: Address{City: "NYC", State: "NY"},
 }
 
-person2 := Person{
+newPerson := Person{
     Name: "John",
     Address: Address{City: "LA", State: "CA"},
 }
 
-diff := DiffPerson(person1, person2)
+diff := newPerson.Diff(&oldPerson)
 // Result: {
 //   "Address": {
 //     "City": "LA",
@@ -190,17 +199,17 @@ diff := DiffPerson(person1, person2)
 ### Pointer Changes
 
 ```go
-person1 := Person{
+oldPerson := Person{
     Name: "John",
     Manager: &Person{Name: "Jane", Age: 45},
 }
 
-person2 := Person{
+newPerson := Person{
     Name: "John",
     Manager: &Person{Name: "Jane", Age: 46},
 }
 
-diff := DiffPerson(person1, person2)
+diff := newPerson.Diff(&oldPerson)
 // Result: {
 //   "Manager": {
 //     "Age": 46
@@ -235,10 +244,10 @@ Generated functions can be tested like any Go code:
 
 ```go
 func TestDiffPerson(t *testing.T) {
-    person1 := Person{Name: "John", Age: 30}
-    person2 := Person{Name: "John", Age: 31}
+    oldPerson := Person{Name: "John", Age: 30}
+    newPerson := Person{Name: "John", Age: 31}
 
-    diff := DiffPerson(person1, person2)
+    diff := newPerson.Diff(&oldPerson)
 
     if diff["Age"] != 31 {
         t.Errorf("Expected Age diff to be 31")
@@ -265,7 +274,7 @@ The generator handles various edge cases:
 ```go
 func (u *User) BeforeUpdate(tx *gorm.DB) error {
     if original, ok := tx.Statement.Context.Value("original").(*User); ok {
-        diff := DiffUser(*original, *u)
+        diff := u.Diff(original)
         // Log changes, validate, etc.
         log.Printf("User changes: %+v", diff)
     }
@@ -277,7 +286,7 @@ func (u *User) BeforeUpdate(tx *gorm.DB) error {
 
 ```go
 func AuditChanges(original, updated User) {
-    diff := DiffUser(original, updated)
+    diff := updated.Diff(&original)
     for field, newValue := range diff {
         auditLog := AuditLog{
             Field:    field,
