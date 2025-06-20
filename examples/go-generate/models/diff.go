@@ -724,20 +724,10 @@ func (new *ServiceData) Diff(old *ServiceData) map[string]interface{} {
 
 	// Compare Status
 
-	// JSON field comparison - handle both datatypes.JSON and struct types with jsonb storage
-
-	// JSON field comparison - attribute-by-attribute diff for struct types
-
-	// Handle direct struct (not pointer) - use attribute-by-attribute diff
-	StatusDiff := new.Status.Diff(&old.Status)
-	if len(StatusDiff) > 0 {
-		jsonValue, err := sonic.Marshal(StatusDiff)
-		if err == nil && !isEmptyJSON(string(jsonValue)) {
-			diff["status"] = gorm.Expr("? || ?", clause.Column{Name: "status"}, string(jsonValue))
-		} else if err != nil {
-			// Fallback to regular assignment if JSON marshaling fails
-			diff["status"] = new.Status
-		}
+	// Struct type comparison - call Diff method directly
+	nestedDiff := new.Status.Diff(&old.Status)
+	if len(nestedDiff) > 0 {
+		diff["status"] = nestedDiff
 	}
 
 	// Compare StatusTimestamp

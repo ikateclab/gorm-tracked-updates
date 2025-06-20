@@ -269,18 +269,23 @@ func (g *DiffGenerator) determineKnownTypeByString(typeStr string) FieldType {
 
 // determineFieldType analyzes a type to determine its category
 func (g *DiffGenerator) determineFieldType(expr ast.Expr, typeStr string, tagStr string) FieldType {
-	// Check if it's a JSON field - prioritize JSON treatment for JSONB fields
+	// Check if it's a JSON field - only treat fields with actual database JSON tags as JSON
 	if g.isJSONField(tagStr) {
 		// Always treat fields with JSON tags as JSON fields for proper gorm.Expr handling
 		// This ensures JSONB fields use JSON merging instead of struct comparison
 		return FieldTypeJSON
 	}
 
-	// Check if this is a nested JSONB struct (struct marked with @jsonb annotation)
+	// For nested JSONB structs without database JSON tags, treat as regular struct fields
+	// This prevents nested gorm.Expr calls
 	baseType := strings.TrimPrefix(typeStr, "*")
 	if g.JSONBStructs[baseType] {
-		// This is a nested JSONB struct, treat as JSON for proper handling
-		return FieldTypeJSON
+		// This is a nested JSONB struct, but treat as regular struct to avoid nested gorm.Expr
+		if strings.HasPrefix(typeStr, "*") {
+			return FieldTypeStructPtr
+		} else {
+			return FieldTypeStruct
+		}
 	}
 
 	// Check for specific known types by string representation
@@ -463,11 +468,22 @@ func (g *DiffGenerator) computeFieldKeysAndIdentifyJSONB() {
 		for j := range g.Structs[i].Fields {
 			field := &g.Structs[i].Fields[j]
 
-			// Re-determine field type considering JSONB structs
-			baseType := strings.TrimPrefix(field.Type, "*")
-			if g.JSONBStructs[baseType] && !g.isJSONField(field.Tag) {
-				// This is a nested JSONB struct, treat as JSON for proper handling
+			// Only treat fields as JSON if they have actual database JSON tags
+			// Nested structs within JSONB should be treated as regular struct fields
+			// This prevents nested gorm.Expr calls
+			if g.isJSONField(field.Tag) {
 				field.FieldType = FieldTypeJSON
+			} else {
+				// For nested JSONB structs without database JSON tags, treat as regular struct
+				baseType := strings.TrimPrefix(field.Type, "*")
+				if g.JSONBStructs[baseType] {
+					// This is a nested JSONB struct, but treat as regular struct to avoid nested gorm.Expr
+					if strings.HasPrefix(field.Type, "*") {
+						field.FieldType = FieldTypeStructPtr
+					} else {
+						field.FieldType = FieldTypeStruct
+					}
+				}
 			}
 
 			// Compute diff keys
