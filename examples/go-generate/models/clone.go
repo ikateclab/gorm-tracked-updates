@@ -149,3 +149,40 @@ func (original *Service) Clone() *Service {
 
 	return &clone
 }
+
+// Clone creates a deep copy of the Tag struct
+func (original *Tag) Clone() *Tag {
+	if original == nil {
+		return nil
+	}
+	// Create new instance - all fields are simple types
+	clone := *original
+	return &clone
+}
+
+// Clone creates a deep copy of the Item struct
+func (original *Item) Clone() *Item {
+	if original == nil {
+		return nil
+	}
+	// Create new instance - all fields are simple types
+	clone := *original
+	return &clone
+}
+
+// Clone creates a deep copy of the SimpleModel struct
+func (original *SimpleModel) Clone() *SimpleModel {
+	if original == nil {
+		return nil
+	}
+	// Create new instance and copy all simple fields
+	clone := *original
+
+	// Only handle JSONB fields that need deep cloning
+
+	// TODO: Tags ([]*Tag) may need manual deep copy handling
+
+	// TODO: Items ([]*Item) may need manual deep copy handling
+
+	return &clone
+}
