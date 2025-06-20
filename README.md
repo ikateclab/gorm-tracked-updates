@@ -186,6 +186,7 @@ Both generators handle all Go field types with optimized performance:
 - **Map Types**: `map[string]interface{}` with key-value copying
 - **Interface Types**: `interface{}` with reflection fallback
 - **JSON Types**: `datatypes.JSON`, custom JSON slices with Sonic performance
+- **JSONB Array Types**: `[]*Struct` with `gorm:"serializer:json"` tags (uses `reflect.DeepEqual`)
 - **Time Types**: `time.Time`, `*time.Time` with proper equality checking
 
 ## GORM Integration

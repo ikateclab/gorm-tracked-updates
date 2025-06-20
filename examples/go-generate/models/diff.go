@@ -724,20 +724,10 @@ func (new *ServiceData) Diff(old *ServiceData) map[string]interface{} {
 
 	// Compare Status
 
-	// JSON field comparison - handle both datatypes.JSON and struct types with jsonb storage
-
-	// JSON field comparison - attribute-by-attribute diff for struct types
-
-	// Handle direct struct (not pointer) - use attribute-by-attribute diff
-	StatusDiff := new.Status.Diff(&old.Status)
-	if len(StatusDiff) > 0 {
-		jsonValue, err := sonic.Marshal(StatusDiff)
-		if err == nil && !isEmptyJSON(string(jsonValue)) {
-			diff["status"] = gorm.Expr("? || ?", clause.Column{Name: "status"}, string(jsonValue))
-		} else if err != nil {
-			// Fallback to regular assignment if JSON marshaling fails
-			diff["status"] = new.Status
-		}
+	// Struct type comparison - call Diff method directly
+	nestedDiff := new.Status.Diff(&old.Status)
+	if len(nestedDiff) > 0 {
+		diff["status"] = nestedDiff
 	}
 
 	// Compare StatusTimestamp
@@ -937,6 +927,134 @@ func (new *Service) Diff(old *Service) map[string]interface{} {
 	// Comparable type comparison
 	if new.ServerPod != old.ServerPod {
 		diff["ServerPod"] = new.ServerPod
+	}
+
+	return diff
+}
+
+// Diff compares this Tag instance (new) with another (old) and returns a map of differences
+// with only the new values for fields that have changed.
+// Usage: newValues = new.Diff(old)
+// Returns nil if either pointer is nil.
+func (new *Tag) Diff(old *Tag) map[string]interface{} {
+	// Handle nil pointers
+	if new == nil || old == nil {
+		return nil
+	}
+
+	diff := make(map[string]interface{})
+
+	// Compare Name
+
+	// Simple type comparison
+	if new.Name != old.Name {
+		diff["name"] = new.Name
+	}
+
+	// Compare Value
+
+	// Simple type comparison
+	if new.Value != old.Value {
+		diff["value"] = new.Value
+	}
+
+	return diff
+}
+
+// Diff compares this Item instance (new) with another (old) and returns a map of differences
+// with only the new values for fields that have changed.
+// Usage: newValues = new.Diff(old)
+// Returns nil if either pointer is nil.
+func (new *Item) Diff(old *Item) map[string]interface{} {
+	// Handle nil pointers
+	if new == nil || old == nil {
+		return nil
+	}
+
+	diff := make(map[string]interface{})
+
+	// Compare ID
+
+	// Simple type comparison
+	if new.ID != old.ID {
+		diff["id"] = new.ID
+	}
+
+	// Compare Title
+
+	// Simple type comparison
+	if new.Title != old.Title {
+		diff["title"] = new.Title
+	}
+
+	// Compare Price
+
+	// Simple type comparison
+	if new.Price != old.Price {
+		diff["price"] = new.Price
+	}
+
+	return diff
+}
+
+// Diff compares this SimpleModel instance (new) with another (old) and returns a map of differences
+// with only the new values for fields that have changed.
+// Usage: newValues = new.Diff(old)
+// Returns nil if either pointer is nil.
+func (new *SimpleModel) Diff(old *SimpleModel) map[string]interface{} {
+	// Handle nil pointers
+	if new == nil || old == nil {
+		return nil
+	}
+
+	diff := make(map[string]interface{})
+
+	// Compare ID
+
+	// UUID comparison
+
+	// Direct UUID comparison
+	if new.ID != old.ID {
+		diff["ID"] = new.ID
+	}
+
+	// Compare Name
+
+	// Simple type comparison
+	if new.Name != old.Name {
+		diff["Name"] = new.Name
+	}
+
+	// Compare Tags
+
+	// JSON field comparison - handle both datatypes.JSON and struct types with jsonb storage
+
+	// JSON field comparison - custom slice types with jsonb storage (not comparable with !=)
+	if !reflect.DeepEqual(new.Tags, old.Tags) {
+		jsonValue, err := sonic.Marshal(new.Tags)
+		if err == nil && !isEmptyJSON(string(jsonValue)) {
+			diff["Tags"] = gorm.Expr("? || ?", clause.Column{Name: "tags"}, string(jsonValue))
+		} else if err != nil {
+			// Fallback to regular assignment if JSON marshaling fails
+			diff["Tags"] = new.Tags
+		}
+		// Skip adding to diff if JSON is empty (no-op update)
+	}
+
+	// Compare Items
+
+	// JSON field comparison - handle both datatypes.JSON and struct types with jsonb storage
+
+	// JSON field comparison - custom slice types with jsonb storage (not comparable with !=)
+	if !reflect.DeepEqual(new.Items, old.Items) {
+		jsonValue, err := sonic.Marshal(new.Items)
+		if err == nil && !isEmptyJSON(string(jsonValue)) {
+			diff["Items"] = gorm.Expr("? || ?", clause.Column{Name: "items"}, string(jsonValue))
+		} else if err != nil {
+			// Fallback to regular assignment if JSON marshaling fails
+			diff["Items"] = new.Items
+		}
+		// Skip adding to diff if JSON is empty (no-op update)
 	}
 
 	return diff

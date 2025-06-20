@@ -49,8 +49,20 @@ func (new *{{.Name}}) Diff(old *{{.Name}}) map[string]interface{} {
 		}
 		// Skip adding to diff if JSON is empty (no-op update)
 	}
-	{{else if or (hasPrefix .Type "JsonbStringSlice") (hasSuffix .Type "Slice")}}
+	{{else if or (hasPrefix .Type "JsonbStringSlice") (hasSuffix .Type "Slice") (hasPrefix .Type "[]")}}
 	// JSON field comparison - custom slice types with jsonb storage (not comparable with !=)
+	if !reflect.DeepEqual(new.{{.Name}}, old.{{.Name}}) {
+		jsonValue, err := sonic.Marshal(new.{{.Name}})
+		if err == nil && !isEmptyJSON(string(jsonValue)) {
+			diff["{{.DiffKey}}"] = gorm.Expr("? || ?", clause.Column{Name: "{{getColumnName .Name .Tag}}"}, string(jsonValue))
+		} else if err != nil {
+			// Fallback to regular assignment if JSON marshaling fails
+			diff["{{.DiffKey}}"] = new.{{.Name}}
+		}
+		// Skip adding to diff if JSON is empty (no-op update)
+	}
+	{{else if hasPrefix .Type "[]"}}
+	// JSON field comparison - slice types with jsonb storage (use reflect.DeepEqual)
 	if !reflect.DeepEqual(new.{{.Name}}, old.{{.Name}}) {
 		jsonValue, err := sonic.Marshal(new.{{.Name}})
 		if err == nil && !isEmptyJSON(string(jsonValue)) {

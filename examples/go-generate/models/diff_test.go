@@ -11,15 +11,15 @@ import (
 func TestEmptyJSONPrevention(t *testing.T) {
 	// Test that empty JSON objects don't create diff entries
 	account1 := &Account{
-		Id:   uuid.New(),
-		Name: "Test Account",
+		Id:       uuid.New(),
+		Name:     "Test Account",
 		Settings: &AccountSettings{}, // Empty struct
 		Data:     &AccountData{},     // Empty struct
 	}
 
 	account2 := &Account{
-		Id:   account1.Id,
-		Name: account1.Name,
+		Id:       account1.Id,
+		Name:     account1.Name,
 		Settings: &AccountSettings{}, // Same empty struct
 		Data:     &AccountData{},     // Same empty struct
 	}
@@ -32,11 +32,96 @@ func TestEmptyJSONPrevention(t *testing.T) {
 	}
 }
 
+func TestSimpleModelArrayDiff(t *testing.T) {
+	// Test array of objects in JSONB fields
+	model1 := &SimpleModel{
+		ID:   uuid.New(),
+		Name: "Test Model",
+		Tags: []*Tag{
+			{Name: "category", Value: "test"},
+			{Name: "priority", Value: "high"},
+		},
+		Items: []*Item{
+			{ID: 1, Title: "Item One", Price: 10.50},
+			{ID: 2, Title: "Item Two", Price: 20.00},
+		},
+	}
+
+	model2 := &SimpleModel{
+		ID:   model1.ID,
+		Name: model1.Name,
+		Tags: []*Tag{
+			{Name: "category", Value: "modified"}, // Changed value
+			{Name: "priority", Value: "high"},
+		},
+		Items: []*Item{
+			{ID: 1, Title: "Item One Modified", Price: 15.75}, // Changed title and price
+			{ID: 2, Title: "Item Two", Price: 20.00},
+		},
+	}
+
+	diff := model1.Diff(model2)
+
+	// Should detect changes in both Tags and Items arrays
+	if len(diff) == 0 {
+		t.Error("Expected diff entries for changed array fields, got none")
+	}
+
+	// Check if Tags field is in diff
+	if _, exists := diff["Tags"]; !exists {
+		t.Error("Expected 'Tags' field in diff, but it's missing")
+	}
+
+	// Check if Items field is in diff
+	if _, exists := diff["Items"]; !exists {
+		t.Error("Expected 'Items' field in diff, but it's missing")
+	}
+
+	t.Logf("Diff result: %+v", diff)
+}
+
+func TestSimpleModelArrayNoChanges(t *testing.T) {
+	// Test that identical arrays don't generate diff entries
+	model1 := &SimpleModel{
+		ID:   uuid.New(),
+		Name: "Test Model",
+		Tags: []*Tag{
+			{Name: "category", Value: "test"},
+			{Name: "priority", Value: "high"},
+		},
+		Items: []*Item{
+			{ID: 1, Title: "Item One", Price: 10.50},
+			{ID: 2, Title: "Item Two", Price: 20.00},
+		},
+	}
+
+	// Create identical model
+	model2 := &SimpleModel{
+		ID:   model1.ID,
+		Name: model1.Name,
+		Tags: []*Tag{
+			{Name: "category", Value: "test"}, // Same values
+			{Name: "priority", Value: "high"},
+		},
+		Items: []*Item{
+			{ID: 1, Title: "Item One", Price: 10.50}, // Same values
+			{ID: 2, Title: "Item Two", Price: 20.00},
+		},
+	}
+
+	diff := model1.Diff(model2)
+
+	// Should have no diff entries since arrays are identical
+	if len(diff) != 0 {
+		t.Errorf("Expected no diff entries for identical arrays, got %d entries: %+v", len(diff), diff)
+	}
+}
+
 func TestNonEmptyJSONDiff(t *testing.T) {
 	// Test that non-empty JSON objects do create diff entries
 	account1 := &Account{
-		Id:   uuid.New(),
-		Name: "Test Account",
+		Id:       uuid.New(),
+		Name:     "Test Account",
 		Settings: &AccountSettings{}, // Empty struct
 		Data:     &AccountData{},     // Empty struct
 	}
@@ -44,7 +129,7 @@ func TestNonEmptyJSONDiff(t *testing.T) {
 	// Create a different account with some data (this would need actual fields in AccountData)
 	account2 := &Account{
 		Id:       account1.Id,
-		Name:     "Updated Account", // Different name
+		Name:     "Updated Account",  // Different name
 		Settings: &AccountSettings{}, // Still empty
 		Data:     &AccountData{},     // Still empty
 	}
