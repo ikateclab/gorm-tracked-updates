@@ -52,7 +52,14 @@ func (new *{{.Name}}) Diff(old *{{.Name}}) map[string]interface{} {
 	{{else if or (hasPrefix .Type "JsonbStringSlice") (hasSuffix .Type "Slice") (hasPrefix .Type "[]")}}
 	// JSON field comparison - custom slice types with jsonb storage (not comparable with !=)
 	if !reflect.DeepEqual(new.{{.Name}}, old.{{.Name}}) {
-		diff["{{.DiffKey}}"] = new.{{.Name}}
+		jsonValue, err := sonic.Marshal(new.{{.Name}})
+		if err == nil && !isEmptyJSON(string(jsonValue)) {
+			diff["{{.DiffKey}}"] = string(jsonValue)
+		} else if err != nil {
+			// Fallback to regular assignment if JSON marshaling fails
+			diff["{{.DiffKey}}"] = new.{{.Name}}
+		}
+		// Skip adding to diff if JSON is empty (no-op update)
 	}
 	{{else if hasPrefix .Type "[]"}}
 	// JSON field comparison - slice types with jsonb storage (use reflect.DeepEqual)
