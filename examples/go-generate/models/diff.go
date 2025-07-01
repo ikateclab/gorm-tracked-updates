@@ -453,14 +453,7 @@ func (new *ServerPodType) Diff(old *ServerPodType) map[string]interface{} {
 
 	// JSON field comparison - custom slice types with jsonb storage (not comparable with !=)
 	if !reflect.DeepEqual(new.AccountIdWhitelist, old.AccountIdWhitelist) {
-		jsonValue, err := sonic.Marshal(new.AccountIdWhitelist)
-		if err == nil && !isEmptyJSON(string(jsonValue)) {
-			diff["AccountIdWhitelist"] = gorm.Expr("? || ?", clause.Column{Name: "account_id_whitelist"}, string(jsonValue))
-		} else if err != nil {
-			// Fallback to regular assignment if JSON marshaling fails
-			diff["AccountIdWhitelist"] = new.AccountIdWhitelist
-		}
-		// Skip adding to diff if JSON is empty (no-op update)
+		diff["AccountIdWhitelist"] = new.AccountIdWhitelist
 	}
 
 	// Compare ServiceIdWhitelist
@@ -469,14 +462,7 @@ func (new *ServerPodType) Diff(old *ServerPodType) map[string]interface{} {
 
 	// JSON field comparison - custom slice types with jsonb storage (not comparable with !=)
 	if !reflect.DeepEqual(new.ServiceIdWhitelist, old.ServiceIdWhitelist) {
-		jsonValue, err := sonic.Marshal(new.ServiceIdWhitelist)
-		if err == nil && !isEmptyJSON(string(jsonValue)) {
-			diff["ServiceIdWhitelist"] = gorm.Expr("? || ?", clause.Column{Name: "service_id_whitelist"}, string(jsonValue))
-		} else if err != nil {
-			// Fallback to regular assignment if JSON marshaling fails
-			diff["ServiceIdWhitelist"] = new.ServiceIdWhitelist
-		}
-		// Skip adding to diff if JSON is empty (no-op update)
+		diff["ServiceIdWhitelist"] = new.ServiceIdWhitelist
 	}
 
 	// Compare CreatedAt
@@ -1031,14 +1017,7 @@ func (new *SimpleModel) Diff(old *SimpleModel) map[string]interface{} {
 
 	// JSON field comparison - custom slice types with jsonb storage (not comparable with !=)
 	if !reflect.DeepEqual(new.Tags, old.Tags) {
-		jsonValue, err := sonic.Marshal(new.Tags)
-		if err == nil && !isEmptyJSON(string(jsonValue)) {
-			diff["Tags"] = gorm.Expr("? || ?", clause.Column{Name: "tags"}, string(jsonValue))
-		} else if err != nil {
-			// Fallback to regular assignment if JSON marshaling fails
-			diff["Tags"] = new.Tags
-		}
-		// Skip adding to diff if JSON is empty (no-op update)
+		diff["Tags"] = new.Tags
 	}
 
 	// Compare Items
@@ -1047,14 +1026,7 @@ func (new *SimpleModel) Diff(old *SimpleModel) map[string]interface{} {
 
 	// JSON field comparison - custom slice types with jsonb storage (not comparable with !=)
 	if !reflect.DeepEqual(new.Items, old.Items) {
-		jsonValue, err := sonic.Marshal(new.Items)
-		if err == nil && !isEmptyJSON(string(jsonValue)) {
-			diff["Items"] = gorm.Expr("? || ?", clause.Column{Name: "items"}, string(jsonValue))
-		} else if err != nil {
-			// Fallback to regular assignment if JSON marshaling fails
-			diff["Items"] = new.Items
-		}
-		// Skip adding to diff if JSON is empty (no-op update)
+		diff["Items"] = new.Items
 	}
 
 	return diff
