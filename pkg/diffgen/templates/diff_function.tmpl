@@ -54,7 +54,7 @@ func (new *{{.Name}}) Diff(old *{{.Name}}) map[string]interface{} {
 	if !reflect.DeepEqual(new.{{.Name}}, old.{{.Name}}) {
 		jsonValue, err := sonic.Marshal(new.{{.Name}})
 		if err == nil && !isEmptyJSON(string(jsonValue)) {
-			diff["{{.DiffKey}}"] = gorm.Expr("? || ?", clause.Column{Name: "{{getColumnName .Name .Tag}}"}, string(jsonValue))
+			diff["{{.DiffKey}}"] = string(jsonValue)
 		} else if err != nil {
 			// Fallback to regular assignment if JSON marshaling fails
 			diff["{{.DiffKey}}"] = new.{{.Name}}

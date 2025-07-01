@@ -455,7 +455,7 @@ func (new *ServerPodType) Diff(old *ServerPodType) map[string]interface{} {
 	if !reflect.DeepEqual(new.AccountIdWhitelist, old.AccountIdWhitelist) {
 		jsonValue, err := sonic.Marshal(new.AccountIdWhitelist)
 		if err == nil && !isEmptyJSON(string(jsonValue)) {
-			diff["AccountIdWhitelist"] = gorm.Expr("? || ?", clause.Column{Name: "account_id_whitelist"}, string(jsonValue))
+			diff["AccountIdWhitelist"] = string(jsonValue)
 		} else if err != nil {
 			// Fallback to regular assignment if JSON marshaling fails
 			diff["AccountIdWhitelist"] = new.AccountIdWhitelist
@@ -471,7 +471,7 @@ func (new *ServerPodType) Diff(old *ServerPodType) map[string]interface{} {
 	if !reflect.DeepEqual(new.ServiceIdWhitelist, old.ServiceIdWhitelist) {
 		jsonValue, err := sonic.Marshal(new.ServiceIdWhitelist)
 		if err == nil && !isEmptyJSON(string(jsonValue)) {
-			diff["ServiceIdWhitelist"] = gorm.Expr("? || ?", clause.Column{Name: "service_id_whitelist"}, string(jsonValue))
+			diff["ServiceIdWhitelist"] = string(jsonValue)
 		} else if err != nil {
 			// Fallback to regular assignment if JSON marshaling fails
 			diff["ServiceIdWhitelist"] = new.ServiceIdWhitelist
@@ -1033,7 +1033,7 @@ func (new *SimpleModel) Diff(old *SimpleModel) map[string]interface{} {
 	if !reflect.DeepEqual(new.Tags, old.Tags) {
 		jsonValue, err := sonic.Marshal(new.Tags)
 		if err == nil && !isEmptyJSON(string(jsonValue)) {
-			diff["Tags"] = gorm.Expr("? || ?", clause.Column{Name: "tags"}, string(jsonValue))
+			diff["Tags"] = string(jsonValue)
 		} else if err != nil {
 			// Fallback to regular assignment if JSON marshaling fails
 			diff["Tags"] = new.Tags
@@ -1049,7 +1049,7 @@ func (new *SimpleModel) Diff(old *SimpleModel) map[string]interface{} {
 	if !reflect.DeepEqual(new.Items, old.Items) {
 		jsonValue, err := sonic.Marshal(new.Items)
 		if err == nil && !isEmptyJSON(string(jsonValue)) {
-			diff["Items"] = gorm.Expr("? || ?", clause.Column{Name: "items"}, string(jsonValue))
+			diff["Items"] = string(jsonValue)
 		} else if err != nil {
 			// Fallback to regular assignment if JSON marshaling fails
 			diff["Items"] = new.Items
