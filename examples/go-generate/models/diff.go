@@ -95,12 +95,29 @@ func (new *Account) Diff(old *Account) map[string]interface{} {
 		// Both are not nil - use attribute-by-attribute diff
 		SettingsDiff := new.Settings.Diff(old.Settings)
 		if len(SettingsDiff) > 0 {
-			jsonValue, err := sonic.Marshal(SettingsDiff)
-			if err == nil && !isEmptyJSON(string(jsonValue)) {
-				diff["Settings"] = gorm.Expr("? || ?", clause.Column{Name: "settings"}, string(jsonValue))
-			} else if err != nil {
-				// Fallback to regular assignment if JSON marshaling fails
-				diff["Settings"] = new.Settings
+			// Check if the diff contains flattened paths (dot notation)
+			hasFlattenedPaths := false
+			for key := range SettingsDiff {
+				if strings.Contains(key, ".") {
+					hasFlattenedPaths = true
+					break
+				}
+			}
+
+			if hasFlattenedPaths {
+				// Flatten paths at this level too: whatsAppData.status.mode
+				for key, value := range SettingsDiff {
+					diff["Settings."+key] = value
+				}
+			} else {
+				// No flattened paths - use traditional || merge
+				jsonValue, err := sonic.Marshal(SettingsDiff)
+				if err == nil && !isEmptyJSON(string(jsonValue)) {
+					diff["Settings"] = gorm.Expr("? || ?", clause.Column{Name: "settings"}, string(jsonValue))
+				} else if err != nil {
+					// Fallback to regular assignment if JSON marshaling fails
+					diff["Settings"] = new.Settings
+				}
 			}
 		}
 	}
@@ -127,12 +144,29 @@ func (new *Account) Diff(old *Account) map[string]interface{} {
 		// Both are not nil - use attribute-by-attribute diff
 		DataDiff := new.Data.Diff(old.Data)
 		if len(DataDiff) > 0 {
-			jsonValue, err := sonic.Marshal(DataDiff)
-			if err == nil && !isEmptyJSON(string(jsonValue)) {
-				diff["Data"] = gorm.Expr("? || ?", clause.Column{Name: "data"}, string(jsonValue))
-			} else if err != nil {
-				// Fallback to regular assignment if JSON marshaling fails
-				diff["Data"] = new.Data
+			// Check if the diff contains flattened paths (dot notation)
+			hasFlattenedPaths := false
+			for key := range DataDiff {
+				if strings.Contains(key, ".") {
+					hasFlattenedPaths = true
+					break
+				}
+			}
+
+			if hasFlattenedPaths {
+				// Flatten paths at this level too: whatsAppData.status.mode
+				for key, value := range DataDiff {
+					diff["Data."+key] = value
+				}
+			} else {
+				// No flattened paths - use traditional || merge
+				jsonValue, err := sonic.Marshal(DataDiff)
+				if err == nil && !isEmptyJSON(string(jsonValue)) {
+					diff["Data"] = gorm.Expr("? || ?", clause.Column{Name: "data"}, string(jsonValue))
+				} else if err != nil {
+					// Fallback to regular assignment if JSON marshaling fails
+					diff["Data"] = new.Data
+				}
 			}
 		}
 	}
@@ -388,12 +422,29 @@ func (new *ServerPodType) Diff(old *ServerPodType) map[string]interface{} {
 		// Both are not nil - use attribute-by-attribute diff
 		VersionDiff := new.Version.Diff(old.Version)
 		if len(VersionDiff) > 0 {
-			jsonValue, err := sonic.Marshal(VersionDiff)
-			if err == nil && !isEmptyJSON(string(jsonValue)) {
-				diff["Version"] = gorm.Expr("? || ?", clause.Column{Name: "version"}, string(jsonValue))
-			} else if err != nil {
-				// Fallback to regular assignment if JSON marshaling fails
-				diff["Version"] = new.Version
+			// Check if the diff contains flattened paths (dot notation)
+			hasFlattenedPaths := false
+			for key := range VersionDiff {
+				if strings.Contains(key, ".") {
+					hasFlattenedPaths = true
+					break
+				}
+			}
+
+			if hasFlattenedPaths {
+				// Flatten paths at this level too: whatsAppData.status.mode
+				for key, value := range VersionDiff {
+					diff["Version."+key] = value
+				}
+			} else {
+				// No flattened paths - use traditional || merge
+				jsonValue, err := sonic.Marshal(VersionDiff)
+				if err == nil && !isEmptyJSON(string(jsonValue)) {
+					diff["Version"] = gorm.Expr("? || ?", clause.Column{Name: "version"}, string(jsonValue))
+				} else if err != nil {
+					// Fallback to regular assignment if JSON marshaling fails
+					diff["Version"] = new.Version
+				}
 			}
 		}
 	}
@@ -833,12 +884,29 @@ func (new *Service) Diff(old *Service) map[string]interface{} {
 		// Both are not nil - use attribute-by-attribute diff
 		DataDiff := new.Data.Diff(old.Data)
 		if len(DataDiff) > 0 {
-			jsonValue, err := sonic.Marshal(DataDiff)
-			if err == nil && !isEmptyJSON(string(jsonValue)) {
-				diff["Data"] = gorm.Expr("? || ?", clause.Column{Name: "data"}, string(jsonValue))
-			} else if err != nil {
-				// Fallback to regular assignment if JSON marshaling fails
-				diff["Data"] = new.Data
+			// Check if the diff contains flattened paths (dot notation)
+			hasFlattenedPaths := false
+			for key := range DataDiff {
+				if strings.Contains(key, ".") {
+					hasFlattenedPaths = true
+					break
+				}
+			}
+
+			if hasFlattenedPaths {
+				// Flatten paths at this level too: whatsAppData.status.mode
+				for key, value := range DataDiff {
+					diff["Data."+key] = value
+				}
+			} else {
+				// No flattened paths - use traditional || merge
+				jsonValue, err := sonic.Marshal(DataDiff)
+				if err == nil && !isEmptyJSON(string(jsonValue)) {
+					diff["Data"] = gorm.Expr("? || ?", clause.Column{Name: "data"}, string(jsonValue))
+				} else if err != nil {
+					// Fallback to regular assignment if JSON marshaling fails
+					diff["Data"] = new.Data
+				}
 			}
 		}
 	}
@@ -865,12 +933,29 @@ func (new *Service) Diff(old *Service) map[string]interface{} {
 		// Both are not nil - use attribute-by-attribute diff
 		SettingsDiff := new.Settings.Diff(old.Settings)
 		if len(SettingsDiff) > 0 {
-			jsonValue, err := sonic.Marshal(SettingsDiff)
-			if err == nil && !isEmptyJSON(string(jsonValue)) {
-				diff["Settings"] = gorm.Expr("? || ?", clause.Column{Name: "settings"}, string(jsonValue))
-			} else if err != nil {
-				// Fallback to regular assignment if JSON marshaling fails
-				diff["Settings"] = new.Settings
+			// Check if the diff contains flattened paths (dot notation)
+			hasFlattenedPaths := false
+			for key := range SettingsDiff {
+				if strings.Contains(key, ".") {
+					hasFlattenedPaths = true
+					break
+				}
+			}
+
+			if hasFlattenedPaths {
+				// Flatten paths at this level too: whatsAppData.status.mode
+				for key, value := range SettingsDiff {
+					diff["Settings."+key] = value
+				}
+			} else {
+				// No flattened paths - use traditional || merge
+				jsonValue, err := sonic.Marshal(SettingsDiff)
+				if err == nil && !isEmptyJSON(string(jsonValue)) {
+					diff["Settings"] = gorm.Expr("? || ?", clause.Column{Name: "settings"}, string(jsonValue))
+				} else if err != nil {
+					// Fallback to regular assignment if JSON marshaling fails
+					diff["Settings"] = new.Settings
+				}
 			}
 		}
 	}
