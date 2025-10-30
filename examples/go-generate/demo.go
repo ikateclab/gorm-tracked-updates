@@ -60,8 +60,8 @@ func createTestService() models.Service {
 		Id:   uuid.New(),
 		Name: "Test Service",
 		Data: &models.ServiceData{
-			MyId:       "test123",
-			SyncCount:  5,
+			MyId:         "test123",
+			SyncCount:    5,
 			SyncFlowDone: true,
 			Status: models.ServiceDataStatus{
 				IsConnected: true,

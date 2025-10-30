@@ -15,11 +15,13 @@ import (
 
 // simpleCloneTemplate contains the embedded template for simple structs (no complex fields).
 // The template file must exist at build time for the embed directive to work.
+//
 //go:embed templates/simple_clone.tmpl
 var simpleCloneTemplate string
 
 // complexCloneTemplate contains the embedded template for complex structs (has fields needing deep cloning).
 // The template file must exist at build time for the embed directive to work.
+//
 //go:embed templates/complex_clone.tmpl
 var complexCloneTemplate string
 
@@ -345,9 +347,9 @@ func (g *CloneGenerator) isRelationshipField(tagStr string) bool {
 
 	// Check for GORM relationship indicators
 	return strings.Contains(tagStr, "foreignKey:") ||
-		   strings.Contains(tagStr, "references:") ||
-		   strings.Contains(tagStr, "many2many:") ||
-		   strings.Contains(tagStr, "polymorphic:")
+		strings.Contains(tagStr, "references:") ||
+		strings.Contains(tagStr, "many2many:") ||
+		strings.Contains(tagStr, "polymorphic:")
 }
 
 // hasJSONBAnnotation checks if a struct has @jsonb annotation in its comments

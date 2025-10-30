@@ -13,7 +13,7 @@ import (
 
 func TestNestedJSONDiffIntegration(t *testing.T) {
 	// Test that nested JSON structures work correctly without nested gorm.Expr
-	
+
 	t.Run("ServiceData nested Status diff", func(t *testing.T) {
 		// Create two ServiceData instances with different Status values
 		data1 := &ServiceData{
@@ -30,8 +30,8 @@ func TestNestedJSONDiffIntegration(t *testing.T) {
 			MyId:      "test123", // Same
 			SyncCount: 10,        // Different
 			Status: ServiceDataStatus{
-				IsConnected: true,  // Different
-				IsStarting:  true,  // Same
+				IsConnected: true,   // Different
+				IsStarting:  true,   // Same
 				Mode:        "idle", // Different
 			},
 		}
@@ -76,7 +76,7 @@ func TestNestedJSONDiffIntegration(t *testing.T) {
 	t.Run("Service root JSONB field diff", func(t *testing.T) {
 		// Test that the root Service.Data field uses gorm.Expr correctly
 		now := time.Now()
-		
+
 		service1 := &Service{
 			Id:   uuid.New(),
 			Name: "Test Service",
@@ -96,19 +96,19 @@ func TestNestedJSONDiffIntegration(t *testing.T) {
 		}
 
 		service2 := &Service{
-			Id:   service1.Id, // Same
+			Id:   service1.Id,   // Same
 			Name: service1.Name, // Same
 			Data: &ServiceData{
 				MyId:      "test123", // Same
 				SyncCount: 10,        // Different
 				Status: ServiceDataStatus{
-					IsConnected: true,  // Different
+					IsConnected: true,   // Different
 					Mode:        "idle", // Different
 				},
 				LastSyncAt: service1.Data.LastSyncAt, // Same
 			},
 			Settings: &ServiceSettings{
-				KeepOnline:        false, // Different
+				KeepOnline:        false,   // Different
 				WppConnectVersion: "1.0.0", // Same
 			},
 		}
@@ -214,7 +214,7 @@ func TestNestedJSONDiffIntegration(t *testing.T) {
 
 func TestEmptyNestedJSONPrevention(t *testing.T) {
 	// Test that empty nested JSON objects don't create unnecessary diff entries
-	
+
 	t.Run("Empty nested status should not create diff", func(t *testing.T) {
 		data1 := &ServiceData{
 			MyId:      "test123",
@@ -286,7 +286,7 @@ func TestEmptyNestedJSONPrevention(t *testing.T) {
 
 func TestNestedJSONTypeConsistency(t *testing.T) {
 	// Verify that the types in nested JSON diffs are consistent and serializable
-	
+
 	data1 := &ServiceData{
 		SyncCount: 5,
 		Status: ServiceDataStatus{
@@ -351,7 +351,7 @@ func isGormExpr(v interface{}) bool {
 	if t == nil {
 		return false
 	}
-	
+
 	// Check for clause.Expr (which is what gorm.Expr returns)
 	return t.String() == "clause.Expr" || strings.Contains(t.String(), "clause.Expr")
 }

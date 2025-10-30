@@ -104,13 +104,13 @@ func TestFieldTypeCategorization(t *testing.T) {
 		{"string", FieldTypeSimple},
 		{"int", FieldTypeSimple},
 		{"bool", FieldTypeSimple},
-		{"TestStruct", FieldTypeSimple},    // Unknown types are treated as simple by default
-		{"*TestStruct", FieldTypeSimple},   // Unknown pointer types are treated as simple by default
+		{"TestStruct", FieldTypeSimple},  // Unknown types are treated as simple by default
+		{"*TestStruct", FieldTypeSimple}, // Unknown pointer types are treated as simple by default
 		{"[]string", FieldTypeSlice},
 		{"[]TestStruct", FieldTypeSlice},
 		{"map[string]int", FieldTypeMap},
 		{"interface{}", FieldTypeInterface},
-		{"UnknownType", FieldTypeSimple},   // Unknown types are treated as simple by default
+		{"UnknownType", FieldTypeSimple}, // Unknown types are treated as simple by default
 	}
 
 	for _, test := range tests {

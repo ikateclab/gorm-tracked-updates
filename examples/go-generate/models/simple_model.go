@@ -11,7 +11,7 @@ type Tag struct {
 	Value string `json:"value"`
 }
 
-// Item represents an item for testing array of objects  
+// Item represents an item for testing array of objects
 // @jsonb
 type Item struct {
 	ID    int     `json:"id"`

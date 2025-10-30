@@ -39,13 +39,13 @@ type TestServiceDataStatus struct {
 // ServiceData represents service data stored in JSONB
 // @jsonb
 type TestServiceData struct {
-	MyId                 string                 `json:"myId,omitempty"`
-	LastSyncAt           *time.Time             `json:"lastSyncAt,omitempty"`
-	LastMessageTimestamp *time.Time             `json:"lastMessageTimestamp,omitempty"`
-	SyncCount            int                    `json:"syncCount,omitempty"`
-	SyncFlowDone         bool                   `json:"syncFlowDone,omitempty"`
-	Status               TestServiceDataStatus  `json:"status,omitempty"`
-	StatusTimestamp      *time.Time             `json:"statusTimestamp,omitempty"`
+	MyId                 string                `json:"myId,omitempty"`
+	LastSyncAt           *time.Time            `json:"lastSyncAt,omitempty"`
+	LastMessageTimestamp *time.Time            `json:"lastMessageTimestamp,omitempty"`
+	SyncCount            int                   `json:"syncCount,omitempty"`
+	SyncFlowDone         bool                  `json:"syncFlowDone,omitempty"`
+	Status               TestServiceDataStatus `json:"status,omitempty"`
+	StatusTimestamp      *time.Time            `json:"statusTimestamp,omitempty"`
 }
 
 // ServiceSettings represents service settings stored in JSONB
@@ -57,13 +57,13 @@ type TestServiceSettings struct {
 }
 
 type TestService struct {
-	Id          uuid.UUID            `gorm:"type:uuid;default:gen_random_uuid();primary_key"`
-	Name        string               `gorm:"type:string;not null"`
-	Data        *TestServiceData     `gorm:"type:jsonb;not null;default:'{}';serializer:json"`
-	Settings    *TestServiceSettings `gorm:"type:jsonb;not null;default:'{}';serializer:json"`
-	CreatedAt   time.Time
-	UpdatedAt   time.Time
-	DeletedAt   gorm.DeletedAt `gorm:"index"`
+	Id        uuid.UUID            `gorm:"type:uuid;default:gen_random_uuid();primary_key"`
+	Name      string               `gorm:"type:string;not null"`
+	Data      *TestServiceData     `gorm:"type:jsonb;not null;default:'{}';serializer:json"`
+	Settings  *TestServiceSettings `gorm:"type:jsonb;not null;default:'{}';serializer:json"`
+	CreatedAt time.Time
+	UpdatedAt time.Time
+	DeletedAt gorm.DeletedAt `gorm:"index"`
 }
 
 func TestNestedJSONStructGeneration(t *testing.T) {

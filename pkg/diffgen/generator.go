@@ -17,6 +17,7 @@ import (
 
 // diffFunctionTemplate contains the embedded template for generating diff functions.
 // The template file must exist at build time for the embed directive to work.
+//
 //go:embed templates/diff_function.tmpl
 var diffFunctionTemplate string
 
