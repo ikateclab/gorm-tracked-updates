@@ -22,11 +22,12 @@ var diffFunctionTemplate string
 
 // StructField represents a field in a struct
 type StructField struct {
-	Name      string
-	Type      string
-	FieldType FieldType
-	Tag       string // Struct tag for the field
-	DiffKey   string // Pre-computed key for diff operations (JSON tag name or field name)
+	Name            string
+	Type            string
+	FieldType       FieldType
+	Tag             string // Struct tag for the field
+	DiffKey         string // Pre-computed key for diff operations (JSON tag name or field name)
+	IsNestedInJSONB bool   // Whether this field is a nested struct within a JSONB-annotated parent
 }
 
 // FieldType categorizes the field type for diff generation
@@ -482,6 +483,11 @@ func (g *DiffGenerator) computeFieldKeysAndIdentifyJSONB() {
 						field.FieldType = FieldTypeStructPtr
 					} else {
 						field.FieldType = FieldTypeStruct
+					}
+
+					// Mark this field as nested within a JSONB parent if the parent struct is JSONB
+					if g.JSONBStructs[g.Structs[i].Name] {
+						field.IsNestedInJSONB = true
 					}
 				}
 			}

@@ -38,9 +38,10 @@ func TestNestedJSONDiffIntegration(t *testing.T) {
 
 		diff := data2.Diff(data1) // new.Diff(old) semantics
 
-		// Should have differences for SyncCount and Status
-		if len(diff) != 2 {
-			t.Errorf("Expected 2 differences, got %d: %v", len(diff), diff)
+		// Should have differences for SyncCount and nested Status fields (flattened)
+		// syncCount + status.isConnected + status.mode = 3 keys
+		if len(diff) != 3 {
+			t.Errorf("Expected 3 differences (flattened), got %d: %v", len(diff), diff)
 		}
 
 		// Check SyncCount diff (new value from data2)
@@ -48,33 +49,27 @@ func TestNestedJSONDiffIntegration(t *testing.T) {
 			t.Errorf("Expected syncCount to be 10, got %v", diff["syncCount"])
 		}
 
-		// Check Status diff - should be a plain map, not gorm.Expr
-		statusDiff, exists := diff["status"]
-		if !exists {
-			t.Fatal("Expected status diff to exist")
+		// Check flattened Status diffs - should use dot notation
+		// The nested status changes should be flattened to "status.field" keys
+		expectedFlattenedChanges := map[string]interface{}{
+			"status.isConnected": true,
+			"status.mode":        "idle",
 		}
 
-		// Status diff should be a plain map[string]interface{}, not gorm.Expr
-		statusMap, ok := statusDiff.(map[string]interface{})
-		if !ok {
-			t.Fatalf("Expected status diff to be map[string]interface{}, got %T: %v", statusDiff, statusDiff)
-		}
-
-		// Verify the nested status changes (new values from data2)
-		expectedStatusChanges := map[string]interface{}{
-			"isConnected": true,
-			"mode":        "idle",
-		}
-
-		for key, expectedValue := range expectedStatusChanges {
-			if statusMap[key] != expectedValue {
-				t.Errorf("Expected status.%s to be %v, got %v", key, expectedValue, statusMap[key])
+		for key, expectedValue := range expectedFlattenedChanges {
+			actualValue, exists := diff[key]
+			if !exists {
+				t.Errorf("Expected flattened key %s to exist in diff", key)
+				continue
+			}
+			if actualValue != expectedValue {
+				t.Errorf("Expected %s to be %v, got %v", key, expectedValue, actualValue)
 			}
 		}
 
 		// Verify IsStarting is NOT in the diff (since it's the same)
-		if _, exists := statusMap["isStarting"]; exists {
-			t.Error("Expected isStarting to NOT be in status diff since it's unchanged")
+		if _, exists := diff["status.isStarting"]; exists {
+			t.Error("Expected status.isStarting to NOT be in diff since it's unchanged")
 		}
 	})
 
@@ -149,9 +144,8 @@ func TestNestedJSONDiffIntegration(t *testing.T) {
 	})
 
 	t.Run("Verify no nested gorm.Expr in JSON content", func(t *testing.T) {
-		// This test ensures that when we marshal the nested diff to JSON,
-		// it doesn't contain nested gorm.Expr structures
-		
+		// This test ensures that flattened diffs don't contain gorm.Expr structures
+
 		data1 := &ServiceData{
 			SyncCount: 5,
 			Status: ServiceDataStatus{
@@ -193,26 +187,27 @@ func TestNestedJSONDiffIntegration(t *testing.T) {
 			}
 		}
 
-		// Verify the JSON structure is clean
+		// Verify the JSON structure is clean and flattened
 		var parsed map[string]interface{}
 		if err := json.Unmarshal(jsonBytes, &parsed); err != nil {
 			t.Fatalf("Failed to parse generated JSON: %v", err)
 		}
 
-		// Should have clean nested structure
-		if statusInterface, exists := parsed["status"]; exists {
-			statusMap, ok := statusInterface.(map[string]interface{})
-			if !ok {
-				t.Errorf("Expected status to be a clean map, got %T", statusInterface)
-			} else {
-				// Verify nested values are clean (should be new values from data2)
-				if statusMap["isConnected"] != true {
-					t.Errorf("Expected clean boolean value, got %v", statusMap["isConnected"])
-				}
-				if statusMap["mode"] != "idle" {
-					t.Errorf("Expected clean string value, got %v", statusMap["mode"])
-				}
+		// Should have flattened structure with dot notation keys
+		if statusIsConnected, exists := parsed["status.isConnected"]; exists {
+			if statusIsConnected != true {
+				t.Errorf("Expected status.isConnected to be true, got %v", statusIsConnected)
 			}
+		} else {
+			t.Error("Expected flattened key status.isConnected to exist")
+		}
+
+		if statusMode, exists := parsed["status.mode"]; exists {
+			if statusMode != "idle" {
+				t.Errorf("Expected status.mode to be 'idle', got %v", statusMode)
+			}
+		} else {
+			t.Error("Expected flattened key status.mode to exist")
 		}
 	})
 }
@@ -264,33 +259,27 @@ func TestEmptyNestedJSONPrevention(t *testing.T) {
 
 		diff := data2.Diff(data1) // new.Diff(old) semantics
 
-		// Should only have status diff
+		// Should only have one flattened status field diff
 		if len(diff) != 1 {
-			t.Errorf("Expected 1 difference, got %d: %v", len(diff), diff)
+			t.Errorf("Expected 1 difference (flattened), got %d: %v", len(diff), diff)
 		}
 
-		statusDiff, exists := diff["status"]
+		// Should have the flattened key for the changed field
+		statusIsConnected, exists := diff["status.isConnected"]
 		if !exists {
-			t.Fatal("Expected status diff to exist")
+			t.Fatal("Expected status.isConnected diff to exist")
 		}
 
-		statusMap := statusDiff.(map[string]interface{})
-
-		// Should only contain the changed field
-		if len(statusMap) != 1 {
-			t.Errorf("Expected only 1 field in status diff, got %d: %v", len(statusMap), statusMap)
-		}
-
-		if statusMap["isConnected"] != true {
-			t.Errorf("Expected isConnected to be true, got %v", statusMap["isConnected"])
+		if statusIsConnected != true {
+			t.Errorf("Expected status.isConnected to be true, got %v", statusIsConnected)
 		}
 
 		// Verify unchanged fields are not included
-		if _, exists := statusMap["isStarting"]; exists {
-			t.Error("Expected isStarting to NOT be in diff since it's unchanged")
+		if _, exists := diff["status.isStarting"]; exists {
+			t.Error("Expected status.isStarting to NOT be in diff since it's unchanged")
 		}
-		if _, exists := statusMap["mode"]; exists {
-			t.Error("Expected mode to NOT be in diff since it's unchanged")
+		if _, exists := diff["status.mode"]; exists {
+			t.Error("Expected status.mode to NOT be in diff since it's unchanged")
 		}
 	})
 }

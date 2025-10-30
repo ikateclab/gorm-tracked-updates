@@ -727,7 +727,12 @@ func (new *ServiceData) Diff(old *ServiceData) map[string]interface{} {
 	// Struct type comparison - call Diff method directly
 	nestedDiff := new.Status.Diff(&old.Status)
 	if len(nestedDiff) > 0 {
-		diff["status"] = nestedDiff
+
+		// Flatten nested JSONB struct diffs with dot notation for proper jsonb_set paths
+		for key, value := range nestedDiff {
+			diff["status."+key] = value
+		}
+
 	}
 
 	// Compare StatusTimestamp

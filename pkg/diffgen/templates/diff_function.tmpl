@@ -21,18 +21,37 @@ func (new *{{.Name}}) Diff(old *{{.Name}}) map[string]interface{} {
 	// Struct type comparison - call Diff method directly
 	nestedDiff := new.{{.Name}}.Diff(&old.{{.Name}})
 	if len(nestedDiff) > 0 {
+		{{if .IsNestedInJSONB}}
+		// Flatten nested JSONB struct diffs with dot notation for proper jsonb_set paths
+		for key, value := range nestedDiff {
+			diff["{{.DiffKey}}."+key] = value
+		}
+		{{else}}
 		diff["{{.DiffKey}}"] = nestedDiff
+		{{end}}
 	}
 	{{else if eq .FieldType.String "StructPtr"}}
 	// Pointer to struct comparison
 	if new.{{.Name}} == nil || old.{{.Name}} == nil {
 		if new.{{.Name}} != old.{{.Name}} {
+			{{if .IsNestedInJSONB}}
+			// For JSONB nested struct, setting to nil should set the entire field to null
 			diff["{{.DiffKey}}"] = new.{{.Name}}
+			{{else}}
+			diff["{{.DiffKey}}"] = new.{{.Name}}
+			{{end}}
 		}
 	} else {
 		nestedDiff := new.{{.Name}}.Diff(old.{{.Name}})
 		if len(nestedDiff) > 0 {
+			{{if .IsNestedInJSONB}}
+			// Flatten nested JSONB struct diffs with dot notation for proper jsonb_set paths
+			for key, value := range nestedDiff {
+				diff["{{.DiffKey}}."+key] = value
+			}
+			{{else}}
 			diff["{{.DiffKey}}"] = nestedDiff
+			{{end}}
 		}
 	}
 	{{else if eq .FieldType.String "JSON"}}
@@ -88,30 +107,66 @@ func (new *{{.Name}}) Diff(old *{{.Name}}) map[string]interface{} {
 		} else if err != nil {
 			diff["{{.DiffKey}}"] = new.{{.Name}}
 		}
-	} else if new.{{.Name}} != nil && old.{{.Name}} != nil {
-		// Both are not nil - use attribute-by-attribute diff
-		{{.Name}}Diff := new.{{.Name}}.Diff(old.{{.Name}})
-		if len({{.Name}}Diff) > 0 {
-			jsonValue, err := sonic.Marshal({{.Name}}Diff)
-			if err == nil && !isEmptyJSON(string(jsonValue)) {
-				diff["{{.DiffKey}}"] = gorm.Expr("? || ?", clause.Column{Name: "{{getColumnName .Name .Tag}}"}, string(jsonValue))
-			} else if err != nil {
-				// Fallback to regular assignment if JSON marshaling fails
-				diff["{{.DiffKey}}"] = new.{{.Name}}
-			}
-		}
-	}
+} else if new.{{.Name}} != nil && old.{{.Name}} != nil {
+// Both are not nil - use attribute-by-attribute diff
+{{.Name}}Diff := new.{{.Name}}.Diff(old.{{.Name}})
+if len({{.Name}}Diff) > 0 {
+// Check if the diff contains flattened paths (dot notation)
+hasFlattenedPaths := false
+for key := range {{.Name}}Diff {
+if strings.Contains(key, ".") {
+hasFlattenedPaths = true
+break
+}
+}
+
+if hasFlattenedPaths {
+// Flatten paths at this level too: whatsAppData.status.mode
+for key, value := range {{.Name}}Diff {
+diff["{{.DiffKey}}."+key] = value
+}
+} else {
+// No flattened paths - use traditional || merge
+jsonValue, err := sonic.Marshal({{.Name}}Diff)
+if err == nil && !isEmptyJSON(string(jsonValue)) {
+diff["{{.DiffKey}}"] = gorm.Expr("? || ?", clause.Column{Name: "{{getColumnName .Name .Tag}}"}, string(jsonValue))
+} else if err != nil {
+// Fallback to regular assignment if JSON marshaling fails
+diff["{{.DiffKey}}"] = new.{{.Name}}
+}
+}
+}
+}
 	{{else}}
-	// Handle direct struct (not pointer) - use attribute-by-attribute diff
-	{{.Name}}Diff := new.{{.Name}}.Diff(&old.{{.Name}})
-	if len({{.Name}}Diff) > 0 {
-		jsonValue, err := sonic.Marshal({{.Name}}Diff)
-		if err == nil && !isEmptyJSON(string(jsonValue)) {
-			diff["{{.DiffKey}}"] = gorm.Expr("? || ?", clause.Column{Name: "{{getColumnName .Name .Tag}}"}, string(jsonValue))
-		} else if err != nil {
-			// Fallback to regular assignment if JSON marshaling fails
-			diff["{{.DiffKey}}"] = new.{{.Name}}
-		}
+// Handle direct struct (not pointer) - use attribute-by-attribute diff
+{{.Name}}Diff := new.{{.Name}}.Diff(&old.{{.Name}})
+if len({{.Name}}Diff) > 0 {
+// Check if the diff contains flattened paths (dot notation)
+hasFlattenedPaths := false
+for key := range {{.Name}}Diff {
+if strings.Contains(key, ".") {
+hasFlattenedPaths = true
+break
+}
+}
+
+if hasFlattenedPaths {
+// Flatten paths at this level too: whatsAppData.status.mode
+for key, value := range {{.Name}}Diff {
+diff["{{.DiffKey}}."+key] = value
+}
+} else {
+// No flattened paths - use traditional || merge
+jsonValue, err := sonic.Marshal({{.Name}}Diff)
+if err == nil && !isEmptyJSON(string(jsonValue)) {
+diff["{{.DiffKey}}"] = gorm.Expr("? || ?", clause.Column{Name: "{{getColumnName .Name .Tag}}"}, string(jsonValue))
+} else if err != nil {
+// Fallback to regular assignment if JSON marshaling fails
+diff["{{.DiffKey}}"] = new.{{.Name}}
+}
+}
+}
+
 	}
 	{{end}}
 	{{end}}

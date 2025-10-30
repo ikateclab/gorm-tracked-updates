@@ -151,6 +151,186 @@ func (new *Person) Diff(old *Person) map[string]interface{} {
 - **Strategy**: Deep equality check with reflection
 - **Safety**: Handles unknown types safely
 
+## Nested JSONB Flattening
+
+**NEW FEATURE**: Automatic flattening of nested JSONB struct diffs for PostgreSQL compatibility.
+
+### Problem
+
+When using GORM's `UpdateByIdInPlace` with nested JSONB structures, PostgreSQL's `||` (merge) operator performs **shallow merging**, which can lose data:
+
+```go
+// Structure
+type WhatsAppData struct {
+    Status *WhatsAppStatus `gorm:"type:jsonb;serializer:json"`
+}
+
+type WhatsAppStatus struct {
+    Mode      string `json:"mode"`
+    State     string `json:"state"`
+    IsStarted bool   `json:"isStarted"`
+    // ... many other fields
+}
+
+// Database BEFORE update:
+{
+  "status": {
+    "mode": "QR",
+    "state": "NORMAL",
+    "isStarted": true,
+    // ... all other fields
+  }
+}
+
+// Without flattening (OLD BEHAVIOR):
+// Diff: {"status": {"mode": "CONNECTED"}}
+// SQL: data || '{"status": {"mode": "CONNECTED"}}'
+// Result: LOSES all other status fields!
+
+// Database AFTER (BROKEN):
+{
+  "status": {
+    "mode": "CONNECTED"
+    // ❌ LOST: state, isStarted, and all other fields
+  }
+}
+```
+
+### Solution: Automatic Flattening
+
+DiffGen now automatically flattens nested JSONB diffs using dot notation:
+
+```go
+// Mark parent struct with @jsonb annotation
+// @jsonb
+type WhatsAppStatus struct {
+    Mode      string `json:"mode"`
+    State     string `json:"state"`
+    IsStarted bool   `json:"isStarted"`
+}
+
+// Parent struct with JSONB field
+// @jsonb
+type WhatsAppData struct {
+    Status WhatsAppStatus `json:"status"`
+}
+```
+
+**Generated code with flattening:**
+
+```go
+func (new *WhatsAppData) Diff(old *WhatsAppData) map[string]interface{} {
+    diff := make(map[string]interface{})
+
+    // Nested struct diff is automatically flattened
+    nestedDiff := new.Status.Diff(&old.Status)
+    if len(nestedDiff) > 0 {
+        // Flatten with dot notation
+        for key, value := range nestedDiff {
+            diff["status."+key] = value
+        }
+    }
+
+    return diff
+}
+```
+
+**Result:**
+
+```go
+// Diff: {"status.mode": "CONNECTED"}
+// gorm-repository converts to: jsonb_set(data, '{status,mode}', '"CONNECTED"')
+// Database AFTER (CORRECT):
+{
+  "status": {
+    "mode": "CONNECTED",
+    "state": "NORMAL",      // ✅ Preserved
+    "isStarted": true       // ✅ Preserved
+    // ... all other fields preserved
+  }
+}
+```
+
+### Usage with @jsonb Annotation
+
+1. **Mark JSONB structs** with `@jsonb` comment:
+
+```go
+// WhatsAppStatus represents status data
+// @jsonb
+type WhatsAppStatus struct {
+    Mode  string `json:"mode"`
+    State string `json:"state"`
+}
+
+// WhatsAppData is the parent JSONB column
+// @jsonb
+type WhatsAppData struct {
+    Status WhatsAppStatus `json:"status"`  // Nested JSONB struct
+}
+```
+
+2. **Generate code:**
+
+```bash
+go generate ./...
+```
+
+3. **Use with gorm-repository:**
+
+```go
+// The flattened diff works seamlessly with gorm-repository
+repo.UpdateByIdInPlace(ctx, entity.Id, entity, func() {
+    entity.WhatsAppData.Status.Mode = "CONNECTED"
+})
+
+// gorm-repository detects dot notation and uses jsonb_set:
+// UPDATE table SET data = jsonb_set(data, '{status,mode}', '"CONNECTED"')
+```
+
+### Multi-Level Nesting
+
+Flattening supports multiple levels of nesting:
+
+```go
+// @jsonb
+type Level3 struct {
+    Value string `json:"value"`
+}
+
+// @jsonb
+type Level2 struct {
+    Config Level3 `json:"config"`
+}
+
+// @jsonb
+type Level1 struct {
+    Settings Level2 `json:"settings"`
+}
+
+// Generates diff keys like:
+// {"settings.config.value": "new_value"}
+```
+
+### Edge Cases Handled
+
+1. **Setting nested struct to nil:**
+```go
+diff["status"] = nil  // Not flattened, sets entire field to null
+```
+
+2. **Creating new nested struct:**
+```go
+diff["status"] = &Status{...}  // Sends entire object
+```
+
+3. **Partial updates:**
+```go
+// Only changed fields in nested struct
+diff["status.mode"] = "CONNECTED"
+// Unchanged fields are NOT included
+```
+
 ## GORM Integration
 
 Perfect for selective database updates:

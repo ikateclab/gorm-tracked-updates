@@ -130,10 +130,13 @@ func TestNestedJSONStructGeneration(t *testing.T) {
 		t.Error("Root JSONB field should use gorm.Expr")
 	}
 
-	// Test 4: Verify proper JSON marshaling structure
-	// The test uses uppercase field names since DiffKey computation happens later
-	if !strings.Contains(code, `diff["Status"] = nestedDiff`) {
-		t.Error("Expected nested diff to be assigned as plain value, not wrapped in gorm.Expr")
+	// Test 4: Verify nested diff is flattened with dot notation
+	// The flattening should iterate over nestedDiff and add each key with a prefix
+	if !strings.Contains(code, `for key, value := range nestedDiff`) {
+		t.Error("Expected nested diff to be flattened with dot notation")
+	}
+	if !strings.Contains(code, `diff["status."+key] = value`) {
+		t.Error("Expected flattened keys to use dot notation (status.key)")
 	}
 }
 
@@ -223,9 +226,12 @@ func TestNestedJSONIntegration(t *testing.T) {
 			t.Error("Nested struct should use struct diff method")
 		}
 
-		// Should assign nested diff as plain value
-		if !strings.Contains(code, `diff["status"] = nestedDiff`) {
-			t.Error("Nested diff should be assigned as plain value")
+		// Should flatten nested diff with dot notation
+		if !strings.Contains(code, `for key, value := range nestedDiff`) {
+			t.Error("Nested diff should be flattened")
+		}
+		if !strings.Contains(code, `diff["status."+key] = value`) {
+			t.Error("Nested diff should use dot notation (status.key)")
 		}
 	})
 
