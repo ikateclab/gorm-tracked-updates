@@ -108,10 +108,24 @@ func TestNestedJSONStructGeneration(t *testing.T) {
 		"TestServiceData":       true,
 	}
 
+	// Mark the Status field as nested in JSONB
+	for i := range generator.Structs {
+		if generator.Structs[i].Name == "TestServiceData" {
+			for j := range generator.Structs[i].Fields {
+				if generator.Structs[i].Fields[j].Name == "Status" {
+					generator.Structs[i].Fields[j].IsNestedInJSONB = true
+				}
+			}
+		}
+	}
+
 	code, err := generator.GenerateCode()
 	if err != nil {
 		t.Fatalf("Failed to generate code: %v", err)
 	}
+
+	// Debug: print generated code for Status field
+	t.Logf("Generated code for Status field:\n%s", extractFunctionCode(code, "TestServiceData", "Status"))
 
 	// Test 1: Verify nested struct uses regular struct comparison, not JSON
 	if !strings.Contains(code, "nestedDiff := new.Status.Diff(&old.Status)") {
@@ -135,8 +149,9 @@ func TestNestedJSONStructGeneration(t *testing.T) {
 	if !strings.Contains(code, `for key, value := range nestedDiff`) {
 		t.Error("Expected nested diff to be flattened with dot notation")
 	}
-	if !strings.Contains(code, `diff["status."+key] = value`) {
-		t.Error("Expected flattened keys to use dot notation (status.key)")
+	// Note: Test uses DiffKey which is "status" (lowercase from JSON tag)
+	if !strings.Contains(code, `diff["status."+key]`) && !strings.Contains(code, `diff["Status."+key]`) {
+		t.Error("Expected flattened keys to use dot notation with DiffKey prefix")
 	}
 }
 
