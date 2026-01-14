@@ -251,14 +251,14 @@ func TestNestedJSONIntegration(t *testing.T) {
 	})
 
 	t.Run("Root JSONB field handling", func(t *testing.T) {
-		// Root JSONB field should use gorm.Expr
-		if !strings.Contains(code, `gorm.Expr("? || ?", clause.Column{Name: "data"}`) {
-			t.Error("Root JSONB field should use gorm.Expr with proper column name")
+		// Root JSONB field should use gorm.Expr for nil->value case
+		if !strings.Contains(code, `gorm.Expr("COALESCE(?::jsonb, '{}'::jsonb) || ?::jsonb", clause.Column{Name: "data"}`) {
+			t.Error("Root JSONB field should use gorm.Expr with COALESCE for nil->value case")
 		}
 
-		// Should marshal nested diff to JSON
-		if !strings.Contains(code, "sonic.Marshal(DataDiff)") {
-			t.Error("Root JSONB field should marshal nested diff to JSON")
+		// For value->value case, should use buildJSONBSetExpr
+		if !strings.Contains(code, `buildJSONBSetExpr("data", DataDiff)`) {
+			t.Error("Root JSONB field should use buildJSONBSetExpr for value->value case")
 		}
 	})
 }
@@ -318,15 +318,21 @@ func TestPreventNestedGormExpr(t *testing.T) {
 		t.Error("TestServiceData.Diff Status field should not contain gorm.Expr")
 	}
 
-	// Only the root JSONB field should contain gorm.Expr
+	// Only the root JSONB field should contain gorm.Expr (for nil->value case)
 	if !strings.Contains(serviceFuncCode, "gorm.Expr") {
-		t.Error("TestService.Diff Data field should contain gorm.Expr")
+		t.Error("TestService.Diff Data field should contain gorm.Expr for nil->value case")
 	}
 
-	// Verify there's only one level of gorm.Expr (no nesting)
+	// Verify there's only one gorm.Expr call in the diff function (for nil->value case)
+	// The value->value case now uses buildJSONBSetExpr helper function
 	gormExprCount := strings.Count(serviceFuncCode, "gorm.Expr")
-	if gormExprCount != 2 { // One for nil->value case, one for value->value case
-		t.Errorf("Expected exactly 2 gorm.Expr calls in root JSONB field, got %d", gormExprCount)
+	if gormExprCount != 1 { // One for nil->value case only
+		t.Errorf("Expected exactly 1 gorm.Expr call in root JSONB field (nil->value case), got %d", gormExprCount)
+	}
+
+	// Verify buildJSONBSetExpr is used for value->value case
+	if !strings.Contains(serviceFuncCode, "buildJSONBSetExpr") {
+		t.Error("TestService.Diff Data field should use buildJSONBSetExpr for value->value case")
 	}
 }
 

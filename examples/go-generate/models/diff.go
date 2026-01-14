@@ -2,17 +2,58 @@ package models
 
 import (
 	"bytes"
+	"reflect"
+	"sort"
+	"strings"
+
 	"github.com/bytedance/sonic"
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
-	"reflect"
-	"strings"
 )
 
 // isEmptyJSON checks if a JSON string represents an empty object or array
 func isEmptyJSON(jsonStr string) bool {
 	trimmed := strings.TrimSpace(jsonStr)
 	return trimmed == "{}" || trimmed == "[]" || trimmed == "null"
+}
+
+// buildJSONBSetExpr constructs a nested jsonb_set expression for PostgreSQL
+// to update multiple paths within a JSONB column
+func buildJSONBSetExpr(columnName string, paths map[string]interface{}) clause.Expr {
+	// Start with the original column value (or empty object if NULL)
+	expr := "COALESCE(?::jsonb, '{}'::jsonb)"
+	args := []interface{}{clause.Column{Name: columnName}}
+
+	// Sort paths for consistent ordering
+	sortedPaths := make([]string, 0, len(paths))
+	for path := range paths {
+		sortedPaths = append(sortedPaths, path)
+	}
+	sort.Strings(sortedPaths)
+
+	// Build nested jsonb_set calls for each path
+	for _, path := range sortedPaths {
+		value := paths[path]
+
+		// Convert "mode" or "state.code" to PostgreSQL array format
+		// "mode" -> {mode}
+		// "state.code" -> {state,code}
+		pathParts := strings.Split(path, ".")
+		pathArray := "{" + strings.Join(pathParts, ",") + "}"
+
+		// Serialize value to JSON
+		valueJSON, err := sonic.Marshal(value)
+		if err != nil {
+			// Skip this path if we can't marshal the value
+			continue
+		}
+
+		// Nest another jsonb_set call
+		expr = "jsonb_set(" + expr + ", '" + pathArray + "', ?::jsonb)"
+		args = append(args, string(valueJSON))
+	}
+
+	return gorm.Expr(expr, args...)
 }
 
 // Diff compares this AccountSettings instance (new) with another (old) and returns a map of differences
@@ -87,7 +128,7 @@ func (new *Account) Diff(old *Account) map[string]interface{} {
 		// new is not nil, old is nil - use entire new
 		jsonValue, err := sonic.Marshal(new.Settings)
 		if err == nil && !isEmptyJSON(string(jsonValue)) {
-			diff["Settings"] = gorm.Expr("? || ?", clause.Column{Name: "settings"}, string(jsonValue))
+			diff["Settings"] = gorm.Expr("COALESCE(?::jsonb, '{}'::jsonb) || ?::jsonb", clause.Column{Name: "settings"}, string(jsonValue))
 		} else if err != nil {
 			diff["Settings"] = new.Settings
 		}
@@ -95,30 +136,8 @@ func (new *Account) Diff(old *Account) map[string]interface{} {
 		// Both are not nil - use attribute-by-attribute diff
 		SettingsDiff := new.Settings.Diff(old.Settings)
 		if len(SettingsDiff) > 0 {
-			// Check if the diff contains flattened paths (dot notation)
-			hasFlattenedPaths := false
-			for key := range SettingsDiff {
-				if strings.Contains(key, ".") {
-					hasFlattenedPaths = true
-					break
-				}
-			}
-
-			if hasFlattenedPaths {
-				// Flatten paths at this level too: whatsAppData.status.mode
-				for key, value := range SettingsDiff {
-					diff["Settings."+key] = value
-				}
-			} else {
-				// No flattened paths - use traditional || merge
-				jsonValue, err := sonic.Marshal(SettingsDiff)
-				if err == nil && !isEmptyJSON(string(jsonValue)) {
-					diff["Settings"] = gorm.Expr("? || ?", clause.Column{Name: "settings"}, string(jsonValue))
-				} else if err != nil {
-					// Fallback to regular assignment if JSON marshaling fails
-					diff["Settings"] = new.Settings
-				}
-			}
+			// Build jsonb_set expression directly for all paths
+			diff["Settings"] = buildJSONBSetExpr("settings", SettingsDiff)
 		}
 	}
 
@@ -136,7 +155,7 @@ func (new *Account) Diff(old *Account) map[string]interface{} {
 		// new is not nil, old is nil - use entire new
 		jsonValue, err := sonic.Marshal(new.Data)
 		if err == nil && !isEmptyJSON(string(jsonValue)) {
-			diff["Data"] = gorm.Expr("? || ?", clause.Column{Name: "data"}, string(jsonValue))
+			diff["Data"] = gorm.Expr("COALESCE(?::jsonb, '{}'::jsonb) || ?::jsonb", clause.Column{Name: "data"}, string(jsonValue))
 		} else if err != nil {
 			diff["Data"] = new.Data
 		}
@@ -144,30 +163,8 @@ func (new *Account) Diff(old *Account) map[string]interface{} {
 		// Both are not nil - use attribute-by-attribute diff
 		DataDiff := new.Data.Diff(old.Data)
 		if len(DataDiff) > 0 {
-			// Check if the diff contains flattened paths (dot notation)
-			hasFlattenedPaths := false
-			for key := range DataDiff {
-				if strings.Contains(key, ".") {
-					hasFlattenedPaths = true
-					break
-				}
-			}
-
-			if hasFlattenedPaths {
-				// Flatten paths at this level too: whatsAppData.status.mode
-				for key, value := range DataDiff {
-					diff["Data."+key] = value
-				}
-			} else {
-				// No flattened paths - use traditional || merge
-				jsonValue, err := sonic.Marshal(DataDiff)
-				if err == nil && !isEmptyJSON(string(jsonValue)) {
-					diff["Data"] = gorm.Expr("? || ?", clause.Column{Name: "data"}, string(jsonValue))
-				} else if err != nil {
-					// Fallback to regular assignment if JSON marshaling fails
-					diff["Data"] = new.Data
-				}
-			}
+			// Build jsonb_set expression directly for all paths
+			diff["Data"] = buildJSONBSetExpr("data", DataDiff)
 		}
 	}
 
@@ -414,7 +411,7 @@ func (new *ServerPodType) Diff(old *ServerPodType) map[string]interface{} {
 		// new is not nil, old is nil - use entire new
 		jsonValue, err := sonic.Marshal(new.Version)
 		if err == nil && !isEmptyJSON(string(jsonValue)) {
-			diff["Version"] = gorm.Expr("? || ?", clause.Column{Name: "version"}, string(jsonValue))
+			diff["Version"] = gorm.Expr("COALESCE(?::jsonb, '{}'::jsonb) || ?::jsonb", clause.Column{Name: "version"}, string(jsonValue))
 		} else if err != nil {
 			diff["Version"] = new.Version
 		}
@@ -422,30 +419,8 @@ func (new *ServerPodType) Diff(old *ServerPodType) map[string]interface{} {
 		// Both are not nil - use attribute-by-attribute diff
 		VersionDiff := new.Version.Diff(old.Version)
 		if len(VersionDiff) > 0 {
-			// Check if the diff contains flattened paths (dot notation)
-			hasFlattenedPaths := false
-			for key := range VersionDiff {
-				if strings.Contains(key, ".") {
-					hasFlattenedPaths = true
-					break
-				}
-			}
-
-			if hasFlattenedPaths {
-				// Flatten paths at this level too: whatsAppData.status.mode
-				for key, value := range VersionDiff {
-					diff["Version."+key] = value
-				}
-			} else {
-				// No flattened paths - use traditional || merge
-				jsonValue, err := sonic.Marshal(VersionDiff)
-				if err == nil && !isEmptyJSON(string(jsonValue)) {
-					diff["Version"] = gorm.Expr("? || ?", clause.Column{Name: "version"}, string(jsonValue))
-				} else if err != nil {
-					// Fallback to regular assignment if JSON marshaling fails
-					diff["Version"] = new.Version
-				}
-			}
+			// Build jsonb_set expression directly for all paths
+			diff["Version"] = buildJSONBSetExpr("version", VersionDiff)
 		}
 	}
 
@@ -876,7 +851,7 @@ func (new *Service) Diff(old *Service) map[string]interface{} {
 		// new is not nil, old is nil - use entire new
 		jsonValue, err := sonic.Marshal(new.Data)
 		if err == nil && !isEmptyJSON(string(jsonValue)) {
-			diff["Data"] = gorm.Expr("? || ?", clause.Column{Name: "data"}, string(jsonValue))
+			diff["Data"] = gorm.Expr("COALESCE(?::jsonb, '{}'::jsonb) || ?::jsonb", clause.Column{Name: "data"}, string(jsonValue))
 		} else if err != nil {
 			diff["Data"] = new.Data
 		}
@@ -884,30 +859,8 @@ func (new *Service) Diff(old *Service) map[string]interface{} {
 		// Both are not nil - use attribute-by-attribute diff
 		DataDiff := new.Data.Diff(old.Data)
 		if len(DataDiff) > 0 {
-			// Check if the diff contains flattened paths (dot notation)
-			hasFlattenedPaths := false
-			for key := range DataDiff {
-				if strings.Contains(key, ".") {
-					hasFlattenedPaths = true
-					break
-				}
-			}
-
-			if hasFlattenedPaths {
-				// Flatten paths at this level too: whatsAppData.status.mode
-				for key, value := range DataDiff {
-					diff["Data."+key] = value
-				}
-			} else {
-				// No flattened paths - use traditional || merge
-				jsonValue, err := sonic.Marshal(DataDiff)
-				if err == nil && !isEmptyJSON(string(jsonValue)) {
-					diff["Data"] = gorm.Expr("? || ?", clause.Column{Name: "data"}, string(jsonValue))
-				} else if err != nil {
-					// Fallback to regular assignment if JSON marshaling fails
-					diff["Data"] = new.Data
-				}
-			}
+			// Build jsonb_set expression directly for all paths
+			diff["Data"] = buildJSONBSetExpr("data", DataDiff)
 		}
 	}
 
@@ -925,7 +878,7 @@ func (new *Service) Diff(old *Service) map[string]interface{} {
 		// new is not nil, old is nil - use entire new
 		jsonValue, err := sonic.Marshal(new.Settings)
 		if err == nil && !isEmptyJSON(string(jsonValue)) {
-			diff["Settings"] = gorm.Expr("? || ?", clause.Column{Name: "settings"}, string(jsonValue))
+			diff["Settings"] = gorm.Expr("COALESCE(?::jsonb, '{}'::jsonb) || ?::jsonb", clause.Column{Name: "settings"}, string(jsonValue))
 		} else if err != nil {
 			diff["Settings"] = new.Settings
 		}
@@ -933,30 +886,8 @@ func (new *Service) Diff(old *Service) map[string]interface{} {
 		// Both are not nil - use attribute-by-attribute diff
 		SettingsDiff := new.Settings.Diff(old.Settings)
 		if len(SettingsDiff) > 0 {
-			// Check if the diff contains flattened paths (dot notation)
-			hasFlattenedPaths := false
-			for key := range SettingsDiff {
-				if strings.Contains(key, ".") {
-					hasFlattenedPaths = true
-					break
-				}
-			}
-
-			if hasFlattenedPaths {
-				// Flatten paths at this level too: whatsAppData.status.mode
-				for key, value := range SettingsDiff {
-					diff["Settings."+key] = value
-				}
-			} else {
-				// No flattened paths - use traditional || merge
-				jsonValue, err := sonic.Marshal(SettingsDiff)
-				if err == nil && !isEmptyJSON(string(jsonValue)) {
-					diff["Settings"] = gorm.Expr("? || ?", clause.Column{Name: "settings"}, string(jsonValue))
-				} else if err != nil {
-					// Fallback to regular assignment if JSON marshaling fails
-					diff["Settings"] = new.Settings
-				}
-			}
+			// Build jsonb_set expression directly for all paths
+			diff["Settings"] = buildJSONBSetExpr("settings", SettingsDiff)
 		}
 	}
 

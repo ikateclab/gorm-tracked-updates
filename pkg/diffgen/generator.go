@@ -494,11 +494,16 @@ func (g *DiffGenerator) computeFieldKeysAndIdentifyJSONB() {
 			}
 
 			// Compute diff keys
-			if g.JSONBStructs[g.Structs[i].Name] {
-				// For JSONB structs, use JSON tag names
+			// For fields with database JSONB tags, always use field names so GORM can map to column names
+			// For nested JSONB structs (without database tags), use JSON tag names for proper JSON path handling
+			if g.isJSONField(field.Tag) {
+				// This field is stored as JSONB in the database - use field name for GORM column mapping
+				field.DiffKey = field.Name
+			} else if g.JSONBStructs[g.Structs[i].Name] {
+				// Parent struct is a JSONB struct (nested) - use JSON tag names for JSON path handling
 				field.DiffKey = g.extractJSONTagName(field.Name, field.Tag)
 			} else {
-				// For regular structs, use field names
+				// Regular struct field - use field names
 				field.DiffKey = field.Name
 			}
 		}
@@ -510,6 +515,18 @@ func (g *DiffGenerator) hasJSONFields() bool {
 	for _, structInfo := range g.Structs {
 		for _, field := range structInfo.Fields {
 			if field.FieldType == FieldTypeJSON {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+// hasDatatypesJSON checks if any struct has datatypes.JSON fields (which need bytes.Equal)
+func (g *DiffGenerator) hasDatatypesJSON() bool {
+	for _, structInfo := range g.Structs {
+		for _, field := range structInfo.Fields {
+			if field.FieldType == FieldTypeJSON && field.Type == "datatypes.JSON" {
 				return true
 			}
 		}
@@ -533,11 +550,15 @@ func (g *DiffGenerator) GenerateCode() (string, error) {
 
 	// Check if we need GORM imports
 	needsGORM := g.hasJSONFields()
+	needsBytes := g.hasDatatypesJSON()
 
 	// Generate imports
 	fmt.Fprintln(&buf, "import (")
-	if needsGORM {
+	if needsBytes {
 		fmt.Fprintln(&buf, "\t\"bytes\"")
+	}
+	if needsGORM {
+		fmt.Fprintln(&buf, "\t\"sort\"")
 		fmt.Fprintln(&buf, "\t\"github.com/bytedance/sonic\"")
 	}
 	fmt.Fprintln(&buf, "\t\"reflect\"")
@@ -555,6 +576,47 @@ func (g *DiffGenerator) GenerateCode() (string, error) {
 		fmt.Fprintln(&buf, "func isEmptyJSON(jsonStr string) bool {")
 		fmt.Fprintln(&buf, "\ttrimmed := strings.TrimSpace(jsonStr)")
 		fmt.Fprintln(&buf, "\treturn trimmed == \"{}\" || trimmed == \"[]\" || trimmed == \"null\"")
+		fmt.Fprintln(&buf, "}")
+		fmt.Fprintln(&buf)
+
+		// Generate buildJSONBSetExpr helper function
+		fmt.Fprintln(&buf, "// buildJSONBSetExpr constructs a nested jsonb_set expression for PostgreSQL")
+		fmt.Fprintln(&buf, "// to update multiple paths within a JSONB column")
+		fmt.Fprintln(&buf, "func buildJSONBSetExpr(columnName string, paths map[string]interface{}) clause.Expr {")
+		fmt.Fprintln(&buf, "\t// Start with the original column value (or empty object if NULL)")
+		fmt.Fprintln(&buf, "\texpr := \"COALESCE(?::jsonb, '{}'::jsonb)\"")
+		fmt.Fprintln(&buf, "\targs := []interface{}{clause.Column{Name: columnName}}")
+		fmt.Fprintln(&buf, "")
+		fmt.Fprintln(&buf, "\t// Sort paths for consistent ordering")
+		fmt.Fprintln(&buf, "\tsortedPaths := make([]string, 0, len(paths))")
+		fmt.Fprintln(&buf, "\tfor path := range paths {")
+		fmt.Fprintln(&buf, "\t\tsortedPaths = append(sortedPaths, path)")
+		fmt.Fprintln(&buf, "\t}")
+		fmt.Fprintln(&buf, "\tsort.Strings(sortedPaths)")
+		fmt.Fprintln(&buf, "")
+		fmt.Fprintln(&buf, "\t// Build nested jsonb_set calls for each path")
+		fmt.Fprintln(&buf, "\tfor _, path := range sortedPaths {")
+		fmt.Fprintln(&buf, "\t\tvalue := paths[path]")
+		fmt.Fprintln(&buf, "")
+		fmt.Fprintln(&buf, "\t\t// Convert \"mode\" or \"state.code\" to PostgreSQL array format")
+		fmt.Fprintln(&buf, "\t\t// \"mode\" -> {mode}")
+		fmt.Fprintln(&buf, "\t\t// \"state.code\" -> {state,code}")
+		fmt.Fprintln(&buf, "\t\tpathParts := strings.Split(path, \".\")")
+		fmt.Fprintln(&buf, "\t\tpathArray := \"{\" + strings.Join(pathParts, \",\") + \"}\"")
+		fmt.Fprintln(&buf, "")
+		fmt.Fprintln(&buf, "\t\t// Serialize value to JSON")
+		fmt.Fprintln(&buf, "\t\tvalueJSON, err := sonic.Marshal(value)")
+		fmt.Fprintln(&buf, "\t\tif err != nil {")
+		fmt.Fprintln(&buf, "\t\t\t// Skip this path if we can't marshal the value")
+		fmt.Fprintln(&buf, "\t\t\tcontinue")
+		fmt.Fprintln(&buf, "\t\t}")
+		fmt.Fprintln(&buf, "")
+		fmt.Fprintln(&buf, "\t\t// Nest another jsonb_set call")
+		fmt.Fprintln(&buf, "\t\texpr = \"jsonb_set(\" + expr + \", '\" + pathArray + \"', ?::jsonb)\"")
+		fmt.Fprintln(&buf, "\t\targs = append(args, string(valueJSON))")
+		fmt.Fprintln(&buf, "\t}")
+		fmt.Fprintln(&buf, "")
+		fmt.Fprintln(&buf, "\treturn gorm.Expr(expr, args...)")
 		fmt.Fprintln(&buf, "}")
 		fmt.Fprintln(&buf)
 	}
