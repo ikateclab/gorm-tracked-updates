@@ -13,6 +13,7 @@ import (
 	"regexp"
 	"strings"
 	"text/template"
+	"unicode"
 )
 
 // diffFunctionTemplate contains the embedded template for generating diff functions.
@@ -92,19 +93,26 @@ type StructInfo struct {
 
 // DiffGenerator handles the code generation for struct diff functions
 type DiffGenerator struct {
-	Structs      []StructInfo
-	KnownStructs map[string]bool
-	Imports      map[string]string
-	JSONBStructs map[string]bool // Tracks which structs are used as JSONB columns
+	Structs        []StructInfo
+	KnownStructs   map[string]bool
+	Imports        map[string]string
+	JSONBStructs   map[string]bool // Tracks which structs are used as JSONB columns
+	NamingStrategy string          // GORM naming strategy: "snake_case" (default) or "camel_case"
 }
 
 // New creates a new DiffGenerator
 func New() *DiffGenerator {
 	return &DiffGenerator{
-		KnownStructs: make(map[string]bool),
-		Imports:      make(map[string]string),
-		JSONBStructs: make(map[string]bool),
+		KnownStructs:   make(map[string]bool),
+		Imports:        make(map[string]string),
+		JSONBStructs:   make(map[string]bool),
+		NamingStrategy: "snake_case", // Default to snake_case for backward compatibility
 	}
+}
+
+// SetNamingStrategy sets the GORM naming strategy for column name generation
+func (g *DiffGenerator) SetNamingStrategy(strategy string) {
+	g.NamingStrategy = strategy
 }
 
 // ParseFile parses a Go file and extracts struct information
@@ -407,10 +415,10 @@ func (g *DiffGenerator) hasJSONBAnnotation(commentGroup *ast.CommentGroup) bool 
 	return false
 }
 
-// extractColumnName extracts the column name from GORM tag or converts field name to snake_case
+// extractColumnName extracts the column name from GORM tag or converts field name based on naming strategy
 func (g *DiffGenerator) extractColumnName(fieldName, tagStr string) string {
 	if tagStr == "" {
-		return g.toSnakeCase(fieldName)
+		return g.applyNamingStrategy(fieldName)
 	}
 
 	// Remove the backticks from the tag string
@@ -423,8 +431,41 @@ func (g *DiffGenerator) extractColumnName(fieldName, tagStr string) string {
 		return matches[1]
 	}
 
-	// If no column tag found, convert field name to snake_case (GORM default)
-	return g.toSnakeCase(fieldName)
+	// If no column tag found, apply naming strategy
+	return g.applyNamingStrategy(fieldName)
+}
+
+// applyNamingStrategy applies the configured GORM naming strategy to a field name
+func (g *DiffGenerator) applyNamingStrategy(fieldName string) string {
+	switch g.NamingStrategy {
+	case "camel_case":
+		// Convert to lowerCamelCase using the same logic as CamelCaseNamingStrategy
+		return g.toLowerCamelCase(fieldName)
+	case "snake_case":
+		fallthrough
+	default:
+		// Default to snake_case
+		return g.toSnakeCase(fieldName)
+	}
+}
+
+// toLowerCamelCase converts a string to camelCase with the first character in lower case
+// This matches the behavior of CamelCaseNamingStrategy from gorm-repository
+func (g *DiffGenerator) toLowerCamelCase(s string) string {
+	if s == "" {
+		return s
+	}
+	runes := []rune(s)
+	for i, r := range runes {
+		if i == 0 {
+			runes[i] = unicode.ToLower(r)
+		} else if unicode.IsUpper(r) {
+			runes[i] = unicode.ToLower(r)
+		} else {
+			break
+		}
+	}
+	return string(runes)
 }
 
 // toSnakeCase converts CamelCase to snake_case
