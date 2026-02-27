@@ -13,10 +13,11 @@ import (
 
 func main() {
 	var (
-		packageDir = flag.String("package", ".", "Package directory to scan for structs")
-		types      = flag.String("types", "clone,diff", "Types to generate (clone,diff)")
-		output     = flag.String("output", "", "Output directory (defaults to package directory)")
-		help       = flag.Bool("help", false, "Show help")
+		packageDir     = flag.String("package", ".", "Package directory to scan for structs")
+		types          = flag.String("types", "clone,diff", "Types to generate (clone,diff)")
+		output         = flag.String("output", "", "Output directory (defaults to package directory)")
+		namingStrategy = flag.String("naming-strategy", "snake_case", "GORM naming strategy: snake_case or camel_case")
+		help           = flag.Bool("help", false, "Show help")
 	)
 	flag.Parse()
 
@@ -83,6 +84,7 @@ func main() {
 	if generateDiff {
 		fmt.Println("📝 Generating diff methods...")
 		diffGenerator := diffgen.New()
+		diffGenerator.SetNamingStrategy(*namingStrategy)
 
 		err := diffGenerator.ParseDirectory(absPackageDir)
 		if err != nil {
@@ -115,16 +117,19 @@ func printUsage() {
 	flag.PrintDefaults()
 	fmt.Println()
 	fmt.Println("Examples:")
-	fmt.Println("  gorm-gen                                    # Generate both clone and diff in current directory")
-	fmt.Println("  gorm-gen -types=clone                       # Generate only clone methods")
-	fmt.Println("  gorm-gen -types=diff                        # Generate only diff methods")
-	fmt.Println("  gorm-gen -package=./models                  # Generate for models directory")
-	fmt.Println("  gorm-gen -package=./models -output=./gen    # Generate to different output directory")
+	fmt.Println("  gorm-gen                                                # Generate both clone and diff in current directory")
+	fmt.Println("  gorm-gen -types=clone                                   # Generate only clone methods")
+	fmt.Println("  gorm-gen -types=diff                                    # Generate only diff methods")
+	fmt.Println("  gorm-gen -package=./models                              # Generate for models directory")
+	fmt.Println("  gorm-gen -package=./models -output=./gen                # Generate to different output directory")
+	fmt.Println("  gorm-gen -naming-strategy=camel_case                    # Use camelCase naming strategy")
+	fmt.Println("  gorm-gen -naming-strategy=snake_case                    # Use snake_case naming strategy (default)")
 	fmt.Println()
 	fmt.Println("go:generate usage:")
 	fmt.Println("  //go:generate gorm-gen")
 	fmt.Println("  //go:generate gorm-gen -types=clone")
 	fmt.Println("  //go:generate gorm-gen -package=./models")
+	fmt.Println("  //go:generate gorm-gen -naming-strategy=camel_case")
 }
 
 func contains(slice []string, item string) bool {

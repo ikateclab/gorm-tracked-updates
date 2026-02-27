@@ -443,3 +443,87 @@ func TestEmbeddedTemplate(t *testing.T) {
 		t.Error("Parsed template should not be nil")
 	}
 }
+
+// TestToLowerCamelCase tests the toLowerCamelCase function
+func TestToLowerCamelCase(t *testing.T) {
+	generator := New()
+
+	tests := []struct {
+		input    string
+		expected string
+	}{
+		// Basic cases
+		{"CreditsControl", "creditsControl"},
+		{"ExtraOptions", "extraOptions"},
+		{"OfflineAt", "offlineAt"},
+		{"IsActiveInternalChat", "isActiveInternalChat"},
+		{"PasswordExpiresAt", "passwordExpiresAt"},
+
+		// Edge cases with multiple uppercase letters
+		// Note: toLowerCamelCase converts all consecutive uppercase letters at the start to lowercase
+		// until it encounters a non-uppercase character
+		{"ID", "id"},
+		{"HTTPServer", "httpserver"},
+		{"XMLParser", "xmlparser"},
+		{"URLPath", "urlpath"},
+		{"IOError", "ioerror"},
+
+		// Single character
+		{"A", "a"},
+		{"a", "a"},
+
+		// Empty string
+		{"", ""},
+
+		// Already lowercase
+		{"name", "name"},
+		{"creditsControl", "creditsControl"},
+
+		// Single uppercase letter followed by lowercase
+		{"Name", "name"},
+		{"Value", "value"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.input, func(t *testing.T) {
+			result := generator.toLowerCamelCase(tt.input)
+			if result != tt.expected {
+				t.Errorf("toLowerCamelCase(%q) = %q, want %q", tt.input, result, tt.expected)
+			}
+		})
+	}
+}
+
+// TestApplyNamingStrategy tests the applyNamingStrategy function
+func TestApplyNamingStrategy(t *testing.T) {
+	tests := []struct {
+		strategy string
+		input    string
+		expected string
+	}{
+		// camel_case strategy
+		{"camel_case", "CreditsControl", "creditsControl"},
+		{"camel_case", "HTTPServer", "httpserver"},
+		{"camel_case", "ID", "id"},
+
+		// snake_case strategy
+		{"snake_case", "CreditsControl", "credits_control"},
+		{"snake_case", "HTTPServer", "httpserver"},
+		{"snake_case", "ID", "id"},
+
+		// Default (snake_case)
+		{"", "CreditsControl", "credits_control"},
+		{"unknown", "CreditsControl", "credits_control"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.strategy+"_"+tt.input, func(t *testing.T) {
+			generator := New()
+			generator.SetNamingStrategy(tt.strategy)
+			result := generator.applyNamingStrategy(tt.input)
+			if result != tt.expected {
+				t.Errorf("applyNamingStrategy(%q, %q) = %q, want %q", tt.strategy, tt.input, result, tt.expected)
+			}
+		})
+	}
+}
