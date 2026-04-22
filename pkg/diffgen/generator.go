@@ -328,6 +328,9 @@ func (g *DiffGenerator) determineFieldTypeByAST(expr ast.Expr) FieldType {
 
 // handleIdentType handles ast.Ident expressions
 func (g *DiffGenerator) handleIdentType(t *ast.Ident) FieldType {
+	if t.Name == "any" {
+		return FieldTypeInterface
+	}
 	// Check for common patterns that indicate slice types (but not JsonbStringSlice with JSON tags)
 	if strings.Contains(strings.ToLower(t.Name), "slice") {
 		return FieldTypeComplex
