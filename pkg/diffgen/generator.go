@@ -30,6 +30,8 @@ type StructField struct {
 	Tag             string // Struct tag for the field
 	DiffKey         string // Pre-computed key for diff operations (JSON tag name or field name)
 	IsNestedInJSONB bool   // Whether this field is a nested struct within a JSONB-annotated parent
+	IsNullable      bool   // Whether this field maps to a nullable database column (gorm tag has default:null)
+	ParentIsJSONB   bool   // Whether the parent struct that owns this field is annotated with @jsonb
 }
 
 // FieldType categorizes the field type for diff generation
@@ -238,10 +240,11 @@ func (g *DiffGenerator) extractFields(structType *ast.StructType) []StructField 
 			fieldType := g.determineFieldType(field.Type, typeStr, tagStr)
 
 			fields = append(fields, StructField{
-				Name:      name.Name,
-				Type:      typeStr,
-				FieldType: fieldType,
-				Tag:       tagStr,
+				Name:       name.Name,
+				Type:       typeStr,
+				FieldType:  fieldType,
+				Tag:        tagStr,
+				IsNullable: g.isNullableField(tagStr),
 			})
 		}
 	}
@@ -392,6 +395,16 @@ func (g *DiffGenerator) handleSelectorType(t *ast.SelectorExpr) FieldType {
 	return FieldTypeComparable
 }
 
+// isNullableField checks if a field maps to a nullable database column.
+// A field is considered nullable when its gorm tag explicitly contains "default:null",
+func (g *DiffGenerator) isNullableField(tagStr string) bool {
+	if tagStr == "" {
+		return false
+	}
+	tagStr = strings.Trim(tagStr, "`")
+	return strings.Contains(tagStr, "default:null")
+}
+
 // isJSONField checks if a field has gorm:"serializer:json" or gorm:"type:jsonb" tag
 func (g *DiffGenerator) isJSONField(tagStr string) bool {
 	if tagStr == "" {
@@ -537,6 +550,10 @@ func (g *DiffGenerator) computeFieldKeysAndIdentifyJSONB() {
 				}
 			}
 
+			if g.JSONBStructs[g.Structs[i].Name] {
+				field.ParentIsJSONB = true
+			}
+
 			// Compute diff keys
 			if g.JSONBStructs[g.Structs[i].Name] {
 				// For JSONB structs, use JSON tag names
@@ -561,6 +578,19 @@ func (g *DiffGenerator) hasJSONFields() bool {
 	return false
 }
 
+// hasNullableUUIDFields checks if any struct has a nullable value-type UUID field
+// that requires emitting nil instead of uuid.Nil in the generated diff.
+func (g *DiffGenerator) hasNullableUUIDFields() bool {
+	for _, structInfo := range g.Structs {
+		for _, field := range structInfo.Fields {
+			if field.FieldType == FieldTypeUUID && field.IsNullable && !strings.HasPrefix(field.Type, "*") {
+				return true
+			}
+		}
+	}
+	return false
+}
+
 // GenerateCode generates the code for all struct diff functions
 func (g *DiffGenerator) GenerateCode() (string, error) {
 	var buf bytes.Buffer
@@ -577,6 +607,7 @@ func (g *DiffGenerator) GenerateCode() (string, error) {
 
 	// Check if we need GORM imports
 	needsGORM := g.hasJSONFields()
+	needsUUID := g.hasNullableUUIDFields()
 
 	// Generate imports
 	fmt.Fprintln(&buf, "import (")
@@ -589,6 +620,9 @@ func (g *DiffGenerator) GenerateCode() (string, error) {
 		fmt.Fprintln(&buf, "\t\"strings\"")
 		fmt.Fprintln(&buf, "\t\"gorm.io/gorm\"")
 		fmt.Fprintln(&buf, "\t\"gorm.io/gorm/clause\"")
+	}
+	if needsUUID {
+		fmt.Fprintln(&buf, "\t\"github.com/google/uuid\"")
 	}
 	fmt.Fprintln(&buf, ")")
 	fmt.Fprintln(&buf)
