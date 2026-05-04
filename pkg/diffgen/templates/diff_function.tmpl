@@ -103,70 +103,24 @@ func (new *{{.Name}}) Diff(old *{{.Name}}) map[string]interface{} {
 		// new is not nil, old is nil - use entire new
 		jsonValue, err := sonic.Marshal(new.{{.Name}})
 		if err == nil && !isEmptyJSON(string(jsonValue)) {
-			diff["{{.DiffKey}}"] = gorm.Expr("? || ?", clause.Column{Name: "{{getColumnName .Name .Tag}}"}, string(jsonValue))
+			diff["{{.DiffKey}}"] = gorm.Expr("COALESCE(?::jsonb, '{}'::jsonb) || ?::jsonb", clause.Column{Name: "{{getColumnName .Name .Tag}}"}, string(jsonValue))
 		} else if err != nil {
 			diff["{{.DiffKey}}"] = new.{{.Name}}
 		}
-} else if new.{{.Name}} != nil && old.{{.Name}} != nil {
-// Both are not nil - use attribute-by-attribute diff
-{{.Name}}Diff := new.{{.Name}}.Diff(old.{{.Name}})
-if len({{.Name}}Diff) > 0 {
-// Check if the diff contains flattened paths (dot notation)
-hasFlattenedPaths := false
-for key := range {{.Name}}Diff {
-if strings.Contains(key, ".") {
-hasFlattenedPaths = true
-break
-}
-}
-
-if hasFlattenedPaths {
-// Flatten paths at this level too: whatsAppData.status.mode
-for key, value := range {{.Name}}Diff {
-diff["{{.DiffKey}}."+key] = value
-}
-} else {
-// No flattened paths - use traditional || merge
-jsonValue, err := sonic.Marshal({{.Name}}Diff)
-if err == nil && !isEmptyJSON(string(jsonValue)) {
-diff["{{.DiffKey}}"] = gorm.Expr("? || ?", clause.Column{Name: "{{getColumnName .Name .Tag}}"}, string(jsonValue))
-} else if err != nil {
-// Fallback to regular assignment if JSON marshaling fails
-diff["{{.DiffKey}}"] = new.{{.Name}}
-}
-}
-}
-}
+	} else if new.{{.Name}} != nil && old.{{.Name}} != nil {
+		// Both are not nil - use attribute-by-attribute diff
+		{{.Name}}Diff := new.{{.Name}}.Diff(old.{{.Name}})
+		if len({{.Name}}Diff) > 0 {
+			// Build jsonb_set expression directly for all paths
+			diff["{{.DiffKey}}"] = buildJSONBSetExpr("{{getColumnName .Name .Tag}}", {{.Name}}Diff)
+		}
+	}
 	{{else}}
-// Handle direct struct (not pointer) - use attribute-by-attribute diff
-{{.Name}}Diff := new.{{.Name}}.Diff(&old.{{.Name}})
-if len({{.Name}}Diff) > 0 {
-// Check if the diff contains flattened paths (dot notation)
-hasFlattenedPaths := false
-for key := range {{.Name}}Diff {
-if strings.Contains(key, ".") {
-hasFlattenedPaths = true
-break
-}
-}
-
-if hasFlattenedPaths {
-// Flatten paths at this level too: whatsAppData.status.mode
-for key, value := range {{.Name}}Diff {
-diff["{{.DiffKey}}."+key] = value
-}
-} else {
-// No flattened paths - use traditional || merge
-jsonValue, err := sonic.Marshal({{.Name}}Diff)
-if err == nil && !isEmptyJSON(string(jsonValue)) {
-diff["{{.DiffKey}}"] = gorm.Expr("? || ?", clause.Column{Name: "{{getColumnName .Name .Tag}}"}, string(jsonValue))
-} else if err != nil {
-// Fallback to regular assignment if JSON marshaling fails
-diff["{{.DiffKey}}"] = new.{{.Name}}
-}
-}
-}
-
+	// Handle direct struct (not pointer) - use attribute-by-attribute diff
+	{{.Name}}Diff := new.{{.Name}}.Diff(&old.{{.Name}})
+	if len({{.Name}}Diff) > 0 {
+		// Build jsonb_set expression directly for all paths
+		diff["{{.DiffKey}}"] = buildJSONBSetExpr("{{getColumnName .Name .Tag}}", {{.Name}}Diff)
 	}
 	{{end}}
 	{{end}}
