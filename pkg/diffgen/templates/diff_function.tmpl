@@ -194,7 +194,16 @@ diff["{{.DiffKey}}"] = new.{{.Name}}
 	{{else}}
 	// Direct UUID comparison
 	if new.{{.Name}} != old.{{.Name}} {
+		{{- if or .IsNullable .ParentIsJSONB}}
+		// Nullable column or inside a JSONB document: emit nil so GORM writes NULL (or JSON null) instead of the zero UUID
+		if new.{{.Name}} == uuid.Nil {
+			diff["{{.DiffKey}}"] = nil
+		} else {
+			diff["{{.DiffKey}}"] = new.{{.Name}}
+		}
+		{{- else}}
 		diff["{{.DiffKey}}"] = new.{{.Name}}
+		{{- end}}
 	}
 	{{end}}
 	{{else if eq .FieldType.String "GormDeletedAt"}}
